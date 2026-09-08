@@ -12,14 +12,15 @@ authoritative physics, multiplayer server, or guaranteed game rules. Low-resolut
 generation, loss of detail, and long-rollout drift are expected limitations.
 
 **Training status:** the second run is training on one H100. Its 10,000-step
-checkpoint passed a local GPU browser playtest and reached **19.51 dB** held-out
+checkpoint passed a local GPU browser playtest. Its newer **30,000-step** snapshot
+reached **19.98 dB** held-out
 next-frame PSNR, versus **18.61 dB** for repeating the previous frame. These are
 early validation results; final weights and a release report are being prepared.
 
-![Early checkpoint: left, idle, and right after twelve generated frames](docs/reports/step-10000/counterfactual.png)
+![30,000-step checkpoint: left, idle, and right after twelve generated frames](docs/reports/step-30000/counterfactual.png)
 
 These branches use identical starting views and random noise. Only the requested
-turn direction changes. [Early measurements](docs/reports/step-10000/evaluation.json)
+turn direction changes. [Early measurements](docs/reports/step-30000/evaluation.json)
 · [Experiment record](docs/EXPERIMENTS.md) · [Model card](docs/MODEL_CARD.md)
 
 ## What is original here?

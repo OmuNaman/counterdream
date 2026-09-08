@@ -181,15 +181,18 @@ def local_predict(checkpoint):
     from .model import load_model
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    dtype = (
+        torch.bfloat16
+        if device == "cuda" and torch.cuda.is_bf16_supported()
+        else torch.float16
+    )
     torch.set_num_threads(4)
     model, ckpt = load_model(checkpoint, device)
 
     def infer(context, actions, steps, seed):
         with (
             torch.inference_mode(),
-            torch.autocast(
-                device_type="cuda", dtype=torch.bfloat16, enabled=device == "cuda"
-            ),
+            torch.autocast(device_type="cuda", dtype=dtype, enabled=device == "cuda"),
         ):
             c = (
                 torch.from_numpy(context.copy())

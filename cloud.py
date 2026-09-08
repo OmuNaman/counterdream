@@ -363,3 +363,22 @@ def play(seeds: str = "artifacts/dust2-v2/evaluation/seeds.npz"):
         host="127.0.0.1",
         port=7860,
     )
+
+
+@app.local_entrypoint()
+def smoke(seeds: str = "artifacts/dust2-v2/evaluation/seeds.npz"):
+    """Generate one private L4 frame to verify the optional remote predictor."""
+    import numpy as np
+    from counterdream.actions import encode
+
+    with np.load(seeds, allow_pickle=False) as source:
+        context = source["frames"][0]
+        actions = np.concatenate((source["actions"][0], encode(dx=30)[None]), axis=0)
+    frame = Dreamer().step.remote(context, actions, 8, 123)
+    assert frame.shape == (64, 112, 3) and frame.dtype == np.uint8
+    assert frame.std() > 1
+    print(
+        json.dumps(
+            {"remote_inference": "passed", "shape": list(frame.shape), "device": "L4"}
+        )
+    )

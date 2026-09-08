@@ -74,6 +74,7 @@ function resume() {
   request();
 }
 function connect() {
+  if (ws?.readyState === WebSocket.CONNECTING) return;
   if (ws?.readyState === WebSocket.OPEN) {
     resume();
     return;
@@ -86,11 +87,15 @@ function connect() {
   );
   ws.binaryType = "blob";
   ws.onopen = () => {
+    loadInfo();
     $("start").disabled = false;
     $("pause").disabled = false;
+    $("pause").textContent = "PAUSE";
     $("reset").disabled = false;
     playing = true;
     busy = true;
+    frame = 0;
+    $("frame").textContent = "0000";
     $("overlay").classList.add("hidden");
     status("IMAGINING", true);
     $("viewport").focus();
@@ -196,7 +201,9 @@ $("viewport").addEventListener("pointermove", (e) => {
   }
 });
 $("viewport").addEventListener("contextmenu", (e) => e.preventDefault());
-fetch("/api/info")
+function loadInfo() {
+  const selected = Number($("spawn").value) || 0;
+  return fetch("/api/info")
   .then((r) => r.json())
   .then((info) => {
     $("spawn").replaceChildren(
@@ -207,10 +214,13 @@ fetch("/api/info")
         }),
       ),
     );
+    $("spawn").value = String(Math.min(selected, info.spawns.length - 1));
     $("checkpoint").textContent = info.checkpoint_step
       ? `${Number(info.checkpoint_step).toLocaleString()} training steps · ${info.device || "GPU"}`
       : "Checkpoint ready";
     $("remaining").textContent =
-      `${info.budget_frames.toLocaleString()} frame session limit`;
+      `${Math.max(0, info.budget_frames - info.generated_frames).toLocaleString()} frames remaining`;
   })
   .catch(() => message("Server metadata could not be loaded.", true));
+}
+loadInfo();
