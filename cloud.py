@@ -42,7 +42,11 @@ gpu_image = (
     volumes={"/artifacts": volume},
 )
 def train_model(
-    run: str = "pilot", steps: int = 100, max_seconds: int = 600, resume: bool = False
+    run: str = "pilot",
+    steps: int = 100,
+    max_seconds: int = 600,
+    resume: bool = False,
+    source: dict = None,
 ):
     from counterdream.train import train
 
@@ -63,6 +67,7 @@ def train_model(
         max_seconds=max_seconds,
         resume=str(latest) if resume else None,
         commit=volume.commit,
+        source=source,
     )
 
 
@@ -185,7 +190,34 @@ def prepare(episodes: int = 100):
 def fit(
     run: str = "pilot", steps: int = 100, max_seconds: int = 600, resume: bool = False
 ):
-    print(train_model.remote(run, steps, max_seconds, resume))
+    import hashlib
+    import subprocess
+
+    root = Path(__file__).resolve().parent
+    files = [
+        root / "cloud.py",
+        root / "pyproject.toml",
+        *sorted((root / "counterdream").rglob("*.py")),
+    ]
+    hashes = {
+        str(p.relative_to(root)).replace("\\", "/"): hashlib.sha256(
+            p.read_bytes()
+        ).hexdigest()
+        for p in files
+    }
+    try:
+        revision = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=root, text=True
+        ).strip()
+        dirty = bool(
+            subprocess.check_output(
+                ["git", "status", "--porcelain"], cwd=root, text=True
+            ).strip()
+        )
+    except (OSError, subprocess.CalledProcessError):
+        revision, dirty = None, None
+    source = dict(git_commit=revision, dirty=dirty, sha256=hashes)
+    print(train_model.remote(run, steps, max_seconds, resume, source))
 
 
 @app.local_entrypoint()

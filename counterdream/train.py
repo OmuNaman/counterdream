@@ -5,6 +5,7 @@ from dataclasses import asdict
 import json
 import math
 from pathlib import Path
+import shutil
 import time
 
 import numpy as np
@@ -97,9 +98,12 @@ def train(
     resume=None,
     base=64,
     commit=None,
+    source=None,
 ):
     if not 1 <= max_seconds <= 14400:
         raise ValueError("Run limit must be 1–14400 seconds")
+    if steps < 1 or batch_size < 1:
+        raise ValueError("Steps and batch size must be positive")
     if not torch.cuda.is_available():
         raise RuntimeError("Use a CUDA GPU for training")
     started = time.time()
@@ -131,13 +135,18 @@ def train(
         rng.bit_generator.state = ckpt["numpy_rng"]
         torch.set_rng_state(ckpt["torch_rng"].cpu())
         torch.cuda.set_rng_state(ckpt["cuda_rng"].cpu())
+    if begin >= steps:
+        raise ValueError(
+            f"Checkpoint is already at step {begin}; target must be larger"
+        )
     dataset = DeviceReplay(Replay(data_root, "train"), device)
     valset = DeviceReplay(Replay(data_root, "val"), device)
     details = dict(
         config=asdict(cfg),
         seed=seed,
         parameters=sum(p.numel() for p in model.parameters()),
-        initialization="random" if not resume else "resume_own_checkpoint",
+        initialization="random",
+        resumed_from_step=begin,
         pretrained_weights=False,
         gpu=torch.cuda.get_device_name(),
         torch_version=str(torch.__version__),
@@ -146,11 +155,22 @@ def train(
         planned_steps=steps,
         max_seconds=max_seconds,
         batch_size=batch_size,
+        source=source or {},
     )
+    manifest_path = Path(data_root) / "manifest.json"
+    if manifest_path.exists():
+        shutil.copyfile(manifest_path, root / "data_manifest.json")
     atomic_json(root / "run.json", details)
     print(json.dumps(details), flush=True)
-    history = []
     best = float("inf")
+    if resume and (root / "metrics.jsonl").exists():
+        old_metrics = [
+            json.loads(line)
+            for line in (root / "metrics.jsonl").read_text().splitlines()
+            if line
+        ]
+        if old_metrics and (root / "best.pt").exists():
+            best = min(m["next_frame_mse"] for m in old_metrics)
 
     def save(step, name):
         checkpoint = dict(
@@ -170,8 +190,9 @@ def train(
         temp.replace(root / name)
 
     # Record an honest random-initialization baseline before any optimizer steps.
-    initial = validate(ema, valset, device, batches=2)
-    atomic_json(root / "initial_metrics.json", initial)
+    if not resume:
+        initial = validate(ema, valset, device, batches=2)
+        atomic_json(root / "initial_metrics.json", initial)
     save(begin, "latest.pt")
     if commit:
         commit()
@@ -229,7 +250,6 @@ def train(
         if step % 1000 == 0 or stopping:
             metrics = validate(ema, valset, device)
             metrics.update(step=step, seconds=time.time() - started, train_loss=smooth)
-            history.append(metrics)
             with (root / "metrics.jsonl").open("a") as f:
                 f.write(json.dumps(metrics) + "\n")
             atomic_json(root / "metrics.json", metrics)
