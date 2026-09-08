@@ -21,6 +21,7 @@ class ModelConfig:
     base: int = 64
     cond_dim: int = 256
     sigma_data: float = 0.5
+    version: int = 2
 
 
 class Residual(nn.Module):
@@ -65,9 +66,12 @@ class WorldModel(nn.Module):
         super().__init__()
         self.cfg = cfg or ModelConfig()
         c, d = self.cfg.base, self.cfg.cond_dim
-        self.register_buffer(
-            "frequencies", torch.exp(torch.linspace(math.log(1), math.log(1000), 32))
+        frequencies = (
+            torch.exp(torch.linspace(math.log(1), math.log(1000), 32))
+            if self.cfg.version == 1
+            else torch.randn(32) * (2 * math.pi)
         )
+        self.register_buffer("frequencies", frequencies)
         self.noise_emb = nn.Sequential(nn.Linear(128, d), nn.SiLU(), nn.Linear(d, d))
         self.action_emb = nn.Sequential(
             nn.Linear(self.cfg.context * self.cfg.action_dim, d),
@@ -94,14 +98,21 @@ class WorldModel(nn.Module):
         nn.init.zeros_(self.out[-1].bias)
 
     def embed_noise(self, sigma):
-        features = sigma.clamp_min(1e-5).log()[:, None] / 4 * self.frequencies[None, :]
+        level = sigma.clamp_min(1e-5).log() / 4
+        if self.cfg.version >= 2:
+            level = torch.where(sigma == 0, torch.zeros_like(level), level)
+        features = level[:, None] * self.frequencies[None, :]
         return torch.cat((features.sin(), features.cos()), dim=1)
 
     def forward(self, noisy, sigma, context, actions, context_sigma=None):
         b = noisy.shape[0]
         sigma = sigma.expand(b)
         if context_sigma is None:
-            context_sigma = torch.full_like(sigma, 1e-5)
+            context_sigma = (
+                torch.full_like(sigma, 1e-5)
+                if self.cfg.version == 1
+                else torch.zeros_like(sigma)
+            )
         cond = self.noise_emb(
             torch.cat((self.embed_noise(sigma), self.embed_noise(context_sigma)), dim=1)
         )
@@ -144,6 +155,11 @@ class WorldModel(nn.Module):
             noise = torch.randn_like(target)
         # Noise augmentation prepares the context for imperfect generated frames.
         sc = (torch.randn(b, device=target.device) * 1.0 - 3.5).exp().clamp(0.001, 0.5)
+        if self.cfg.version >= 2:
+            # Clean context is explicitly trained, including the inference condition.
+            sc = torch.where(
+                torch.rand(b, device=target.device) < 0.2, torch.zeros_like(sc), sc
+            )
         noised_context = (
             context + torch.randn_like(context) * sc[:, None, None, None, None]
         )
@@ -180,7 +196,9 @@ class WorldModel(nn.Module):
 
 def load_model(path, device="cpu"):
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
-    model = WorldModel(ModelConfig(**checkpoint["config"])).to(device)
+    config = dict(checkpoint["config"])
+    config.setdefault("version", 1)
+    model = WorldModel(ModelConfig(**config)).to(device)
     model.load_state_dict(
         checkpoint["ema"] if "ema" in checkpoint else checkpoint["model"]
     )

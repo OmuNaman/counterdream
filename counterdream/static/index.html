@@ -1,15 +1,117 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CounterDream — Neural CS:GO</title><link rel="stylesheet" href="/style.css"></head>
-<body><main>
-<header><div class="brand"><span class="mark">◇</span> COUNTERDREAM <span class="version">RESEARCH / 01</span></div><div class="live"><i></i><span id="status">DISCONNECTED</span></div></header>
-<section class="heading"><div><p class="eyebrow">ACTION-CONDITIONED WORLD MODEL</p><h1>Dream in Dust II.</h1><p>Every next frame is a prediction. Where will you take it?</p></div><div class="run"><span>INITIALIZATION</span><strong>Trained from scratch</strong><span id="checkpoint">Loading checkpoint details…</span></div></section>
-<section class="workspace">
-<div class="game-column"><div class="viewport" id="viewport" tabindex="0" aria-label="Neural game viewport"><canvas id="canvas" width="112" height="64"></canvas><div class="reticle"></div><div class="screen-label"><span>DUST II</span><span>NEURAL SIMULATION</span></div><div class="overlay" id="overlay"><span class="large-mark">◇</span><h2 id="overlay-title">Step into the model.</h2><p id="overlay-copy">Load a real starting view, then let the model imagine what comes next.</p><button id="start">CONNECT & PLAY <span>↗</span></button></div><div class="frame-count">FRAME <span id="frame">0000</span><span class="divider">/</span><span id="latency">— ms</span></div></div>
-<div class="transport"><button id="pause" disabled>PAUSE</button><button id="reset" disabled>↻ RESET WORLD</button><div class="spacer"></div><span id="remaining">2,000 frame session limit</span></div>
-<div class="notice" role="status" id="message">Research model. Geometry, objects, and game rules can drift during long rollouts.</div>
-</div>
-<aside><div class="panel"><p class="eyebrow">WORLD SETUP</p><label for="spawn">Starting view</label><select id="spawn"><option>Loading…</option></select><label for="quality">Prediction quality</label><select id="quality"><option value="8">8 steps · balanced</option><option value="4">4 steps · faster</option><option value="16">16 steps · slower</option></select><p class="small">112 × 64 model output, enlarged for viewing. GPU compute runs only when frames are requested.</p></div>
-<div class="panel controls"><p class="eyebrow">TAKE CONTROL</p><div><span>Move</span><kbd>W A S D</kbd></div><div><span>Look</span><kbd>↑ ← ↓ →</kbd></div><div><span>Fire</span><kbd>F / CLICK</kbd></div><div><span>Reload</span><kbd>R</kbd></div><div><span>Jump</span><kbd>SPACE</kbd></div><div><span>Pause</span><kbd>ESC</kbd></div><p class="small">Click the world to focus. Mouse drag also changes your view.</p></div>
-<div class="panel provenance"><span class="dot"></span><div><strong>Model-only rollout</strong><p>No game engine is running behind the viewer. Reset loads four seed frames; subsequent frames are generated.</p></div></div></aside>
-</section><footer><span>COUNTERDREAM · OPEN RESEARCH</span><span>CS:GO dataset: Tim Pearce & Jun Zhu · Inspired by DIAMOND / EDM</span></footer>
-</main><script src="/app.js"></script></body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>CounterDream — Neural CS:GO</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand">
+          <span class="mark">◇</span> COUNTERDREAM
+          <span class="version">RESEARCH / 01</span>
+        </div>
+        <div class="live"><i></i><span id="status">DISCONNECTED</span></div>
+      </header>
+      <section class="heading">
+        <div>
+          <p class="eyebrow">ACTION-CONDITIONED WORLD MODEL</p>
+          <h1>Dream in Dust II.</h1>
+          <p>Every next frame is a prediction. Where will you take it?</p>
+        </div>
+        <div class="run">
+          <span>INITIALIZATION</span><strong>Trained from scratch</strong
+          ><span id="checkpoint">Loading checkpoint details…</span>
+        </div>
+      </section>
+      <section class="workspace">
+        <div class="game-column">
+          <div
+            class="viewport"
+            id="viewport"
+            tabindex="0"
+            aria-label="Neural game viewport"
+          >
+            <canvas id="canvas" width="112" height="64"></canvas>
+            <div class="reticle"></div>
+            <div class="screen-label">
+              <span>DUST II</span><span>NEURAL SIMULATION</span>
+            </div>
+            <div class="overlay" id="overlay">
+              <span class="large-mark">◇</span>
+              <h2 id="overlay-title">Step into the model.</h2>
+              <p id="overlay-copy">
+                Load a real starting view, then let the model imagine what comes
+                next.
+              </p>
+              <button id="start">CONNECT & PLAY <span>↗</span></button>
+            </div>
+            <div class="frame-count">
+              FRAME <span id="frame">0000</span><span class="divider">/</span
+              ><span id="latency">— ms</span>
+            </div>
+          </div>
+          <div class="transport">
+            <button id="pause" disabled>PAUSE</button
+            ><button id="reset" disabled>↻ RESET WORLD</button>
+            <div class="spacer"></div>
+            <span id="remaining">2,000 frame session limit</span>
+          </div>
+          <div class="notice" role="status" id="message">
+            Research model. Geometry, objects, and game rules can drift during
+            long rollouts.
+          </div>
+        </div>
+        <aside>
+          <div class="panel">
+            <p class="eyebrow">WORLD SETUP</p>
+            <label for="spawn">Starting view</label
+            ><select id="spawn">
+              <option>Loading…</option></select
+            ><label for="quality">Prediction quality</label
+            ><select id="quality">
+              <option value="8">8 steps · balanced</option>
+              <option value="4">4 steps · faster</option>
+              <option value="16">16 steps · slower</option>
+            </select>
+            <p class="small">
+              112 × 64 model output, enlarged for viewing. GPU compute runs only
+              when frames are requested.
+            </p>
+          </div>
+          <div class="panel controls">
+            <p class="eyebrow">TAKE CONTROL</p>
+            <div><span>Move</span><kbd>W A S D</kbd></div>
+            <div><span>Look</span><kbd>↑ ← ↓ →</kbd></div>
+            <div><span>Fire</span><kbd>F / CLICK</kbd></div>
+            <div><span>Reload</span><kbd>R</kbd></div>
+            <div><span>Jump</span><kbd>SPACE</kbd></div>
+            <div><span>Pause</span><kbd>ESC</kbd></div>
+            <p class="small">
+              Click the world to focus. Mouse drag also changes your view.
+            </p>
+          </div>
+          <div class="panel provenance">
+            <span class="dot"></span>
+            <div>
+              <strong>Model-only rollout</strong>
+              <p>
+                No game engine is running behind the viewer. Reset loads four
+                seed frames; subsequent frames are generated.
+              </p>
+            </div>
+          </div>
+        </aside>
+      </section>
+      <footer>
+        <span>COUNTERDREAM · OPEN RESEARCH</span
+        ><span
+          >CS:GO dataset: Tim Pearce & Jun Zhu · Inspired by DIAMOND / EDM</span
+        >
+      </footer>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>

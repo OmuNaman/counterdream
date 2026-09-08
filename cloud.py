@@ -93,6 +93,64 @@ def evaluate_model(run: str = "dust2-v1"):
     return result
 
 
+@app.function(
+    image=gpu_image,
+    gpu="H100",
+    cpu=4,
+    memory=16384,
+    timeout=600,
+    retries=0,
+    max_containers=1,
+    scaledown_window=2,
+    volumes={"/artifacts": volume},
+)
+def diagnose_model():
+    import numpy as np
+    import torch
+    from counterdream.data import Replay
+    from counterdream.train import DeviceReplay
+    from counterdream.model import load_model
+
+    torch.set_num_threads(4)
+    model, checkpoint = load_model("/artifacts/runs/dust2-v1/latest.pt", "cuda")
+    dataset = DeviceReplay(Replay("/artifacts/data", "val"), "cuda")
+    obs, actions = dataset.batch(32, np.random.default_rng(90210))
+    forward = model.forward
+    results = []
+    for context_noise in (0.00001, 0.001, 0.005, 0.01, 0.03, 0.05, 0.1):
+
+        def controlled(noisy, sigma, context, acts, context_sigma=None):
+            return forward(
+                noisy,
+                sigma,
+                context,
+                acts,
+                torch.full((len(noisy),), context_noise, device="cuda"),
+            )
+
+        model.forward = controlled
+        with (
+            torch.inference_mode(),
+            torch.autocast(device_type="cuda", dtype=torch.bfloat16),
+        ):
+            generated = model.sample(obs[:, :-1], actions, steps=8, seed=1234)
+        mse = float(((generated - obs[:, -1]) / 2).square().mean())
+        results.append(
+            dict(context_noise=context_noise, mse=mse, psnr=float(-10 * np.log10(mse)))
+        )
+    report = dict(
+        checkpoint_step=checkpoint["step"],
+        results=results,
+        repeat_frame_mse=float(((obs[:, -2] - obs[:, -1]) / 2).square().mean()),
+    )
+    Path("/artifacts/runs/dust2-v1/diagnostics.json").write_text(
+        json.dumps(report, indent=2)
+    )
+    volume.commit()
+    print(json.dumps(report), flush=True)
+    return report
+
+
 @app.cls(
     image=gpu_image,
     gpu="L4",
@@ -223,6 +281,42 @@ def fit(
 @app.local_entrypoint()
 def assess(run: str = "dust2-v1"):
     print(evaluate_model.remote(run))
+
+
+@app.local_entrypoint()
+def diagnose():
+    print(diagnose_model.remote())
+
+
+@app.local_entrypoint()
+def fetch(run: str = "dust2-v1", destination: str = "artifacts/dust2-v1"):
+    """Download inference weights/reports, never multi-hundred-MB optimizer states."""
+    from pathlib import PurePosixPath
+
+    if run not in ("pilot", "dust2-v1", "dust2-v2"):
+        raise ValueError("Unknown run")
+    prefix = PurePosixPath("runs") / run
+    target_root = Path(destination).resolve()
+    target_root.mkdir(parents=True, exist_ok=True)
+    entries = volume.listdir(str(prefix), recursive=True)
+    for entry in entries:
+        path = PurePosixPath(entry.path.lstrip("/"))
+        if (
+            path.suffix not in (".json", ".jsonl", ".npz", ".mp4", ".png")
+            and path.name != "model.pt"
+        ):
+            continue
+        relative = path.relative_to(prefix)
+        target = target_root.joinpath(*relative.parts).resolve()
+        if not target.is_relative_to(target_root):
+            raise ValueError("Unexpected artifact path")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_suffix(target.suffix + ".download")
+        with temporary.open("wb") as output:
+            for chunk in volume.read_file(str(path)):
+                output.write(chunk)
+        temporary.replace(target)
+        print(f"Downloaded {relative} ({target.stat().st_size:,} bytes)")
 
 
 @app.local_entrypoint()
