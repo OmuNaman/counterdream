@@ -82,11 +82,17 @@ def make_app(seed_path, predict, metadata=None, max_generated_frames=2000):
         if origin and origin not in ("http://127.0.0.1:7860", "http://localhost:7860"):
             await ws.close(code=1008)
             return
+        try:
+            spawn = int(ws.query_params.get("spawn", "0"))
+            if not 0 <= spawn < len(seed_frames):
+                raise ValueError("Unknown spawn")
+        except ValueError:
+            await ws.close(code=1008)
+            return
         await ws.accept()
-        context = seed_frames[0].copy()
-        actions = seed_actions[0].copy()
+        context = seed_frames[spawn].copy()
+        actions = seed_actions[spawn].copy()
         frame = 0
-        spawn = 0
         started = time.monotonic()
         await ws.send_bytes(png(context[-1]))
         try:

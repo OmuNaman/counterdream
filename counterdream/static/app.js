@@ -18,7 +18,7 @@ function resume(){playing=true;$('pause').textContent='PAUSE';$('overlay').class
 function connect(){
  if(ws?.readyState===WebSocket.OPEN){resume();return;}
  $('start').disabled=true;$('start').textContent='CONNECTING…';status('CONNECTING');
- ws=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws`);ws.binaryType='blob';
+ ws=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws?spawn=${encodeURIComponent($('spawn').value)}`);ws.binaryType='blob';
  ws.onopen=()=>{$('start').disabled=false;$('pause').disabled=false;$('reset').disabled=false;playing=true;busy=true;$('overlay').classList.add('hidden');status('IMAGINING',true);$('viewport').focus();};
  ws.onmessage=async event=>{
   if(typeof event.data==='string'){
