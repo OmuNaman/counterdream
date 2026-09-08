@@ -10,7 +10,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
-def plot(run, output):
+def plot(run, output, reports=None):
     run = Path(run)
     rows = [
         json.loads(line)
@@ -41,6 +41,43 @@ def plot(run, output):
         xlabel="Optimizer steps",
     )
     axes[0].legend(frameon=False)
+    if reports:
+        measured = [
+            json.loads(path.read_text())
+            for path in Path(reports).glob("step-*/evaluation.json")
+        ]
+        measured = sorted(
+            (
+                r
+                for r in measured
+                if r.get("sampler_sigma_max") == 20 and r.get("sampler_steps") == 8
+            ),
+            key=lambda r: r["checkpoint_step"],
+        )
+        if not measured:
+            raise ValueError("No reports with the release sampling configuration")
+        axes[0].clear()
+        eval_steps = [r["checkpoint_step"] for r in measured]
+        axes[0].plot(
+            eval_steps,
+            [r["next_frame_psnr"] for r in measured],
+            "o-",
+            color="#367d46",
+            label="World model",
+        )
+        axes[0].plot(
+            eval_steps,
+            [r["repeat_frame_psnr"] for r in measured],
+            "--",
+            color="#737c89",
+            label="Repeat previous frame",
+        )
+        axes[0].set(
+            title="Release sampler · 256 validation windows",
+            ylabel="PSNR (dB) · higher is better",
+            xlabel="Optimizer steps",
+        )
+        axes[0].legend(frameon=False)
     axes[1].plot(steps, [r["train_loss"] for r in rows], color="#336b9e", lw=2)
     axes[1].set(
         title="Smoothed training objective",
@@ -55,7 +92,7 @@ def plot(run, output):
     fig.suptitle(
         "CounterDream · random initialization · Dust II", fontsize=14, fontweight="bold"
     )
-    if not all("sampler_sigma_max" in row for row in rows):
+    if not reports and not all("sampler_sigma_max" in row for row in rows):
         axes[0].set_title(
             "Legacy monitor: sigma_max=5 (not release sampler)", fontsize=10
         )
@@ -73,5 +110,8 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("run")
     p.add_argument("output")
+    p.add_argument(
+        "--reports", help="Directory containing step-*/evaluation.json reports"
+    )
     a = p.parse_args()
-    plot(a.run, a.output)
+    plot(a.run, a.output, a.reports)

@@ -36,6 +36,10 @@ file is held out before temporal windows are formed. A window never crosses a
 source-file boundary. Source BGR images are converted once to RGB. Action `a[t]`
 with frame `x[t]` predicts `x[t+1]`.
 
+The source project's [capture configuration](https://github.com/TeaPearce/Counter-Strike_Behavioural_Cloning/blob/master/config.py)
+uses 16 frames per second. The viewer targets that cadence when hardware permits.
+The evaluation videos are slowed to eight frames per second for inspection.
+
 The pinned dataset revision is `265c6e5ac7aa335f58a2f2e864aad176fecfedde`.
 [The manifest](reports/data-manifest.json) records original source members and
 their SHA-256 hashes. This is the same map and collection, not unseen maps or

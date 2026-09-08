@@ -48,7 +48,7 @@ also turns the view; left click fires while held. Escape pauses. After a reset,
 press Resume to continue. Controls are inputs to the learned model: an input does
 not guarantee an accurate simulation of that game mechanic.
 
-The viewer requests at most eight generated frames per second by default. The
+The viewer requests at most sixteen generated frames per second by default. The
 model's reported GPU latency excludes browser display and may differ from the
 rate you experience. Eight diffusion steps are the evaluated default; four is
 faster and sixteen is slower. Those options can change visual quality.

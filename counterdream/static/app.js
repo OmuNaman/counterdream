@@ -127,7 +127,7 @@ function connect() {
     if (playing)
       timer = setTimeout(
         request,
-        Math.max(0, 125 - (performance.now() - lastRequest)),
+        Math.max(0, 62.5 - (performance.now() - lastRequest)),
       );
   };
   ws.onerror = () => {
