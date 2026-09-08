@@ -174,18 +174,27 @@ class WorldModel(nn.Module):
         return loss, pred.clamp(-1, 1)
 
     @torch.no_grad()
-    def sample(self, context, actions, steps=8, seed=None):
+    def sample(self, context, actions, steps=8, seed=None, sigma_max=None):
         if not 2 <= steps <= 32:
             raise ValueError("Use 2–32 denoising steps")
         b, _, c, h, w = context.shape
+        if sigma_max is None:
+            sigma_max = 5.0 if self.cfg.version == 1 else 20.0
+        if not 0.05 <= sigma_max <= 80:
+            raise ValueError("sigma_max must be between 0.05 and 80")
         generator = (
             None
             if seed is None
             else torch.Generator(device=context.device).manual_seed(seed)
         )
-        x = torch.randn((b, c, h, w), device=context.device, generator=generator) * 5
+        x = (
+            torch.randn((b, c, h, w), device=context.device, generator=generator)
+            * sigma_max
+        )
         ramp = torch.linspace(0, 1, steps, device=context.device)
-        sigmas = (5 ** (1 / 7) + ramp * (0.002 ** (1 / 7) - 5 ** (1 / 7))) ** 7
+        sigmas = (
+            sigma_max ** (1 / 7) + ramp * (0.002 ** (1 / 7) - sigma_max ** (1 / 7))
+        ) ** 7
         sigmas = torch.cat((sigmas, sigmas.new_zeros(1)))
         for i in range(steps):
             s = sigmas[i]

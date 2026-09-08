@@ -52,12 +52,14 @@ def evaluate(checkpoint, data_root, output, steps=8, clips=4, frames=64):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     torch.set_num_threads(4)
     model, ckpt = load_model(checkpoint, device)
+    torch.save({k: ckpt[k] for k in ("config", "ema", "step", "run")}, out / "model.pt")
     replay = Replay(data_root, "val")
     val = DeviceReplay(replay, device)
     result = validate(model, val, device, batches=16, batch_size=16)
     result.update(
         checkpoint_step=ckpt["step"],
         sampler_steps=steps,
+        sampler_sigma_max=5.0 if model.cfg.version == 1 else 20.0,
         initialization=ckpt.get("run", {}).get("initialization"),
         pretrained_weights=False,
     )

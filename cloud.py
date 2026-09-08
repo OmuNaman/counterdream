@@ -82,13 +82,17 @@ def train_model(
     scaledown_window=2,
     volumes={"/artifacts": volume},
 )
-def evaluate_model(run: str = "dust2-v1"):
+def evaluate_model(run: str = "dust2-v2", preview: bool = False):
     from counterdream.evaluate import evaluate
 
     if run not in ("pilot", "dust2-v1", "dust2-v2"):
         raise ValueError("Unknown run")
     root = Path("/artifacts/runs") / run
-    result = evaluate(root / "model.pt", "/artifacts/data", root / "evaluation")
+    result = evaluate(
+        root / ("latest.pt" if preview else "model.pt"),
+        "/artifacts/data",
+        root / ("preview" if preview else "evaluation"),
+    )
     volume.commit()
     return result
 
@@ -279,8 +283,8 @@ def fit(
 
 
 @app.local_entrypoint()
-def assess(run: str = "dust2-v1"):
-    print(evaluate_model.remote(run))
+def assess(run: str = "dust2-v2", preview: bool = False):
+    print(evaluate_model.remote(run, preview))
 
 
 @app.local_entrypoint()
