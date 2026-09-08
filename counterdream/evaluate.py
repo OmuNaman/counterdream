@@ -1,6 +1,7 @@
 """Held-out evaluation and honest side-by-side autoregressive rollout artifacts."""
 
 from pathlib import Path
+import hashlib
 import json
 import math
 import time
@@ -62,6 +63,14 @@ def evaluate(checkpoint, data_root, output, steps=8, clips=4, frames=64):
         sampler_sigma_max=5.0 if model.cfg.version == 1 else 20.0,
         initialization=ckpt.get("run", {}).get("initialization"),
         pretrained_weights=False,
+        checkpoint_sha256=hashlib.sha256((out / "model.pt").read_bytes()).hexdigest(),
+        torch_version=str(torch.__version__),
+        evaluation_source_sha256={
+            name: hashlib.sha256(
+                Path(__file__).with_name(name).read_bytes()
+            ).hexdigest()
+            for name in ("model.py", "train.py", "evaluate.py", "data.py")
+        },
     )
     horizons = {i: [] for i in (1, 4, 8, 16, 32, 64) if i <= frames}
     repeat = {i: [] for i in horizons}

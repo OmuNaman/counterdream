@@ -248,6 +248,30 @@ def prepare(episodes: int = 100):
     print(prepare_data.remote(episodes))
 
 
+@app.function(
+    image=data_image.add_local_file("scripts/audit_data.py", "/audit_data.py"),
+    cpu=1,
+    memory=1024,
+    timeout=120,
+    retries=0,
+    max_containers=1,
+    volumes={"/artifacts": volume},
+)
+def audit_data():
+    import runpy
+
+    report = runpy.run_path("/audit_data.py")["audit"](
+        "/artifacts/data", "/artifacts/runs/dust2-v2/data_coverage.json"
+    )
+    volume.commit()
+    return report
+
+
+@app.local_entrypoint()
+def coverage():
+    print(audit_data.remote())
+
+
 @app.local_entrypoint()
 def fit(
     run: str = "pilot", steps: int = 100, max_seconds: int = 600, resume: bool = False
