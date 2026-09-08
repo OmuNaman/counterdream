@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "counterdream"
+version = "0.1.0"
+description = "A small action-conditioned CS:GO diffusion world model trained from scratch."
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = ["torch>=2.6,<3", "numpy>=1.26,<3", "Pillow>=10", "h5py>=3.11", "requests>=2.32", "imageio>=2.36", "imageio-ffmpeg>=0.5", "fastapi>=0.115", "uvicorn>=0.34"]
+
+[project.optional-dependencies]
+cloud = ["modal==1.4.3"]
+dev = ["pytest>=8", "httpx>=0.28"]
+
+[tool.setuptools.packages.find]
+include = ["counterdream*"]
+
+[tool.setuptools.package-data]
+counterdream = ["static/*"]

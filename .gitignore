@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv*/
+.env*
+!.env.example
+data/
+checkpoints/
+runs/
+*.pt
+*.npz
+*.npy
+*.hdf5
+*.tar
+*.zip
+.modal.toml
+artifacts/
