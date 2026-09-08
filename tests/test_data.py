@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from counterdream.data import Replay
+from counterdream.data import Replay, prepare, REVISION
 
 
 def test_windows_never_cross_episodes_and_actions_are_causal(tmp_path):
@@ -22,3 +22,28 @@ def test_windows_never_cross_episodes_and_actions_are_causal(tmp_path):
 def test_missing_split_fails(tmp_path):
     with pytest.raises(ValueError, match="No val episodes"):
         Replay(tmp_path, "val")
+
+
+def test_completed_partial_manifest_can_finish_without_redownload(
+    tmp_path, monkeypatch
+):
+    import json
+    from counterdream import data
+
+    episode = tmp_path / "train" / "episode-0000.npz"
+    episode.parent.mkdir()
+    np.savez(episode, frames=np.zeros((5, 64, 112, 3), dtype=np.uint8))
+    prior = dict(
+        revision=REVISION,
+        height=64,
+        width=112,
+        episodes=[dict(file="train/episode-0000.npz", source="one.hdf5")],
+    )
+    (tmp_path / "manifest.partial.json").write_text(json.dumps(prior))
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("Completed data should not download again")
+
+    monkeypatch.setattr(data, "HTTPRangeReader", no_network)
+    assert prepare(tmp_path, episodes=1) == prior
+    assert json.loads((tmp_path / "manifest.json").read_text()) == prior

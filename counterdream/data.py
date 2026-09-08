@@ -14,6 +14,7 @@ import requests
 
 DATASET = "TeaPearce/CounterStrike_Deathmatch"
 SHARD = "hdf5_dm_july2021_1_to_200.tar"
+REVISION = "265c6e5ac7aa335f58a2f2e864aad176fecfedde"
 
 
 class HTTPRangeReader(io.RawIOBase):
@@ -67,7 +68,16 @@ class HTTPRangeReader(io.RawIOBase):
                     raise RuntimeError(
                         "Dataset server did not honor the bounded byte-range request"
                     )
-                payload = response.content
+                chunks = []
+                received = 0
+                for chunk in response.iter_content(1024 * 1024):
+                    received += len(chunk)
+                    if received > end - self.position + 1:
+                        raise RuntimeError(
+                            "Dataset server exceeded the requested byte range"
+                        )
+                    chunks.append(chunk)
+                payload = b"".join(chunks)
             if size < 4096:
                 self.cached_start = self.position
                 self.cached = payload
@@ -80,15 +90,12 @@ class HTTPRangeReader(io.RawIOBase):
         super().close()
 
 
-def prepare(root, episodes=100, height=64, width=112, progress=None):
+def prepare(root, episodes=100, height=64, width=112, progress=None, revision=REVISION):
+    if not 1 <= episodes <= 200:
+        raise ValueError("Request 1–200 episodes from this archive")
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
-    # Resolve once and record the immutable dataset commit.
-    metadata = requests.get(
-        f"https://huggingface.co/api/datasets/{DATASET}", timeout=30
-    )
-    metadata.raise_for_status()
-    revision = metadata.json()["sha"]
+    # Pin the original experiment's immutable revision for reproducible downloads.
     url = f"https://huggingface.co/datasets/{DATASET}/resolve/{revision}/{SHARD}"
     partial = root / "manifest.partial.json"
     records = []
@@ -106,6 +113,13 @@ def prepare(root, episodes=100, height=64, width=112, progress=None):
         for record in records:
             if not (root / record["file"]).is_file():
                 raise ValueError("A committed episode is missing")
+        if len(records) >= episodes:
+            if len(records) != episodes:
+                raise ValueError(
+                    "Existing partial dataset has more episodes than requested"
+                )
+            (root / "manifest.json").write_text(json.dumps(prior, indent=2))
+            return prior
     completed = {r["source"] for r in records}
     started = time.time()
     print(
