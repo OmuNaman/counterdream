@@ -317,7 +317,11 @@ def diagnose():
 
 
 @app.local_entrypoint()
-def fetch(run: str = "dust2-v2", destination: str = "artifacts/dust2-v2"):
+def fetch(
+    run: str = "dust2-v2",
+    destination: str = "artifacts/dust2-v2",
+    include_previews: bool = False,
+):
     """Download inference weights/reports, never multi-hundred-MB optimizer states."""
     from pathlib import PurePosixPath
 
@@ -335,6 +339,11 @@ def fetch(run: str = "dust2-v2", destination: str = "artifacts/dust2-v2"):
         ):
             continue
         relative = path.relative_to(prefix)
+        if not include_previews and (
+            relative.parts[0] in ("preview", "stability")
+            or relative == PurePosixPath("model.pt")
+        ):
+            continue
         target = target_root.joinpath(*relative.parts).resolve()
         if not target.is_relative_to(target_root):
             raise ValueError("Unexpected artifact path")

@@ -1,7 +1,8 @@
 # Compute limits and cost accounting
 
-The initial project work has a user-approved budget of USD 200–300. We use
-USD 200 as the working ceiling. Spending is not required to reach that amount.
+Each training and evaluation job has explicit resource and time limits. Review
+the per-invocation costs below before allocating compute. The source-level limits
+do not configure an account-wide spending cap.
 
 Rates checked on 2026-09-08 at [Modal pricing](https://modal.com/pricing):
 

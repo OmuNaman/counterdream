@@ -47,3 +47,19 @@ of the final training state is requested with `assess --latest`.
 Sampling settings and checkpoint choices were tuned on this validation split.
 The released metrics are not an untouched test estimate. The source episodes are
 from the same map and collection; neighboring episodes may share visual content.
+
+## Rollout stability check
+
+At step 30,000, next-frame PSNR improved to 19.984 dB on the 256-window evaluation.
+Longer autoregressive clips still drifted toward walls and lost weapon detail. A
+separate bounded check compared eight versus sixteen denoising steps and two
+nonzero context-noise conditioning levels on the same checkpoint. It used 64
+validation windows and four 64-frame rollouts per setting.
+
+Sixteen steps slightly reduced error at horizon 64, but worsened one-step error
+and horizons 16 and 32. Context-noise conditioning of 0.03 or 0.1 did not consistently
+improve rollouts. The release therefore retains eight steps and the trained clean
+context condition. These settings do not solve long-horizon drift.
+
+[Measurements](reports/stability-comparison.json) ·
+[Bounded comparison script](../scripts/sampler_stability_modal.py).
