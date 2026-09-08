@@ -1,0 +1,39 @@
+{
+  "config": {
+    "height": 64,
+    "width": 112,
+    "context": 4,
+    "action_dim": 51,
+    "base": 64,
+    "cond_dim": 256,
+    "sigma_data": 0.5,
+    "version": 2
+  },
+  "seed": 42,
+  "parameters": 9660291,
+  "initialization": "random",
+  "resumed_from_step": 0,
+  "pretrained_weights": false,
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "torch_version": "2.6.0+cu124",
+  "train_frames": 90000,
+  "val_frames": 10000,
+  "planned_steps": 60000,
+  "max_seconds": 7200,
+  "batch_size": 48,
+  "source": {
+    "git_commit": "d9c65da1ed21d903127ebacbce4194dbb4283905",
+    "dirty": false,
+    "sha256": {
+      "cloud.py": "81529619cb2619472c7c951d0739b40f1f5b686c83fa088a92310e5d65c15232",
+      "pyproject.toml": "b11dc356bcbd606cdb4429bae87d7b010339d28eeb8dd02871f8d22fa06a1350",
+      "counterdream/__init__.py": "730222dc07d2081f8eb675d227fe70c0bf2eefb4150e869e3887ddbe9cb63238",
+      "counterdream/actions.py": "a593bc01e2e4db14849d1e4d6590769ddb0861c30595388415e16c384319d0f4",
+      "counterdream/data.py": "b85ffa218bbfef8d33335c259a0c7d5f2f0a2bf1e9ac39e5cbfef65328d4e42d",
+      "counterdream/evaluate.py": "cfc6c70e92a8d4347a3a5bf027665c13828f3194736768ad19b47bdb2ed5376b",
+      "counterdream/model.py": "d5b26deb463dd057c8549e86b59dcbaecaad2c5159da4cc0e6fcd7bf598ff376",
+      "counterdream/serve.py": "6c65cdecb0ed3b7cf50a4f4f7bd32833d54d899dbf41113dead5ce46999fa603",
+      "counterdream/train.py": "5915a7d7bec564c0861adcce4e8fafa646093991dd58ccbe58a4a9789c29a321"
+    }
+  }
+}
