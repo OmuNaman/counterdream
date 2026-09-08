@@ -15,6 +15,7 @@ def package(evaluation, output, tag, training_state=None):
     import torch
 
     source, target = Path(evaluation).resolve(), Path(output).resolve()
+    project = Path(__file__).resolve().parents[1]
     metrics = json.loads((source / "evaluation.json").read_text())
     checkpoint = torch.load(source / "model.pt", map_location="cpu", weights_only=True)
     if checkpoint["step"] != metrics["checkpoint_step"]:
@@ -24,6 +25,8 @@ def package(evaluation, output, tag, training_state=None):
     if checkpoint["run"]["pretrained_weights"] or metrics["pretrained_weights"]:
         raise ValueError("This release expects CounterDream's training from scratch")
     target.mkdir(parents=True, exist_ok=True)
+    for name in ("LICENSE", "NOTICE.md"):
+        shutil.copyfile(project / name, target / name)
     names = ["model.pt", "seeds.npz", "evaluation.json"]
     for name in [
         *names,
@@ -50,7 +53,6 @@ def package(evaluation, output, tag, training_state=None):
             for name in names
         },
     }
-    project = Path(__file__).resolve().parents[1]
     (project / "counterdream" / "release.json").write_text(
         json.dumps(manifest, indent=2) + "\n"
     )
