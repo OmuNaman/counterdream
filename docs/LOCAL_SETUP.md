@@ -33,7 +33,7 @@ python3.11 -m venv .venv
 These commands match the experiment's PyTorch 2.6 / CUDA 12.4 environment. For a
 different GPU generation or driver, choose a suitable build from the
 [official PyTorch installation instructions](https://pytorch.org/get-started/locally/).
-The model was tested on an H100 and an RTX 4070 Laptop GPU. This implementation
+The model was tested on an H100, a Modal L4, and an RTX 4070 Laptop GPU. This implementation
 uses CUDA where available; its CPU fallback works much more slowly. It does not
 currently use Apple's MPS backend.
 

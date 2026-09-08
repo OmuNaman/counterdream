@@ -63,3 +63,16 @@ context condition. These settings do not solve long-horizon drift.
 
 [Measurements](reports/stability-comparison.json) ·
 [Bounded comparison script](../scripts/sampler_stability_modal.py).
+
+## Completed training and release selection
+
+The run completed 60,000 optimizer steps in 3,679.2 seconds. The final state reached
+19.495 dB on the 256-window evaluation, compared with 19.984 dB at step 30,000.
+The next-frame error criterion therefore selects step 30,000 for the playing
+checkpoint. The release also includes the full state at step 60,000, including
+optimizer and random-number states. Additional training did not improve the
+selected metric; this is visible in the published learning curve. Both evaluations
+use the same windows, eight steps, and sigma_max 20.
+
+The selected checkpoint was tested in the local browser on an RTX 4070 Laptop GPU
+and through a private Modal L4 inference call. [Release results](RESULTS.md).

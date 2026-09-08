@@ -1,0 +1,18 @@
+{
+  "tag": "v0.1.0",
+  "checkpoint_step": 30000,
+  "files": {
+    "model.pt": {
+      "bytes": 38686198,
+      "sha256": "22dc9612eb98e66bbf86e1f91a39b56a2e35af6beb30d995e65133974066285a"
+    },
+    "seeds.npz": {
+      "bytes": 264935,
+      "sha256": "87dbe819bc93b1109f856df799c9d028551e078cced9c6c3ea2f6a614dc08d3b"
+    },
+    "evaluation.json": {
+      "bytes": 2088,
+      "sha256": "2dee60ada92d2294b6de3ee9e663279e91ae3f6721f79f4b5e921b3b3761c221"
+    }
+  }
+}

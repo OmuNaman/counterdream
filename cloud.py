@@ -174,9 +174,10 @@ class Dreamer:
         from counterdream.model import load_model
 
         torch.set_num_threads(2)
-        self.model, self.checkpoint = load_model(
-            "/artifacts/runs/dust2-v2/evaluation/model.pt", "cuda"
-        )
+        selected = Path("/artifacts/runs/dust2-v2/release/model.pt")
+        if not selected.exists():
+            selected = Path("/artifacts/runs/dust2-v2/evaluation/model.pt")
+        self.model, self.checkpoint = load_model(selected, "cuda")
 
     @modal.method()
     def step(self, context, actions, steps: int, seed: int):

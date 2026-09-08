@@ -45,3 +45,20 @@ modal app stop APP_ID
 Do not stop unrelated applications. Do not launch a replacement writer until the
 prior run has stopped. The Modal dashboard is the source of truth for actual
 billed spend; these source-level controls do not set a workspace billing cap.
+
+
+## Completed v0.1.0 run
+
+The successful run completed 60,000 steps in 3679.2 seconds
+(61.3 minutes), including its data loading, validation, and checkpoint
+export. Applying the published rates to that duration gives approximately
+**$4.04 for H100 time** and
+**$4.68 including its
+requested CPU and RAM**. These are estimates, not measured invoice line items.
+
+The project also ran CPU data preparation and retries, a 100-step pilot, a discarded
+6,000-step first attempt, several evaluations, and small sampling diagnostics.
+A conservative estimate for the complete experiment is **under USD 15** at the
+published rates, before account-specific adjustments. Actual billed spend was not
+independently verified and should be checked in Modal. Local laptop inference
+does not incur Modal charges. No recurring job or public GPU service is deployed.

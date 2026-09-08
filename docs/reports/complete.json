@@ -1,0 +1,7 @@
+{
+  "step": 60000,
+  "seconds": 3679.238048315048,
+  "best_step": 1000,
+  "best_mse": 0.02611142536625266,
+  "stopped_by_time": false
+}

@@ -20,8 +20,10 @@ fed back into the model. No game engine supplies those subsequent frames.
   unrolling after step 2,000. EMA decay increases to 0.999.
 - Public `TeaPearce/CounterStrike_Deathmatch` Dust II gameplay/action dataset.
 - Exact dataset revision and source-file hashes are recorded in the data manifest.
-- The experiment targets at most 60,000 optimizer steps with a 7,200-second loop
-  allowance. The exact released step is recorded in its checkpoint and evaluation.
+- Training completed **60,000 optimizer steps in 61.3 minutes** within its
+  7,200-second loop allowance. The **30,000-step checkpoint** had lower next-frame
+  validation error and is released for play. The full final training state is also
+  released for continuation. [Measured results](RESULTS.md).
 
 [Run configuration and source hashes](reports/run.json) ·
 [Experiment history, including the discarded first attempt](EXPERIMENTS.md).
