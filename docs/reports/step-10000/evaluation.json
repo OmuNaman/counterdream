@@ -1,0 +1,57 @@
+{
+  "next_frame_mse": 0.011205676157260314,
+  "next_frame_psnr": 19.505619327471862,
+  "repeat_frame_mse": 0.0137783971731551,
+  "repeat_frame_psnr": 18.608013005227942,
+  "shuffled_action_mse": 0.015441364899743348,
+  "action_advantage_mse": 0.004235688742483035,
+  "fixed_noise_mse": 0.0011625356346485205,
+  "validation_frames": 256,
+  "checkpoint_step": 10000,
+  "sampler_steps": 8,
+  "sampler_sigma_max": 20.0,
+  "initialization": "random",
+  "pretrained_weights": false,
+  "rollout": {
+    "1": {
+      "mse": 0.006101445993408561,
+      "psnr": 22.145672285075264,
+      "repeat_frame_mse": 0.01103638589847833,
+      "clips": 4
+    },
+    "4": {
+      "mse": 0.018966089002788067,
+      "psnr": 17.22022215744032,
+      "repeat_frame_mse": 0.02643046109005809,
+      "clips": 4
+    },
+    "8": {
+      "mse": 0.02716703061014414,
+      "psnr": 15.659578279090624,
+      "repeat_frame_mse": 0.035612456034868956,
+      "clips": 4
+    },
+    "16": {
+      "mse": 0.035477347671985626,
+      "psnr": 14.500488559902024,
+      "repeat_frame_mse": 0.03805055050179362,
+      "clips": 4
+    },
+    "32": {
+      "mse": 0.039988404139876366,
+      "psnr": 13.98065927376231,
+      "repeat_frame_mse": 0.06122160982340574,
+      "clips": 4
+    },
+    "64": {
+      "mse": 0.04561903700232506,
+      "psnr": 13.408538867268527,
+      "repeat_frame_mse": 0.07369775604456663,
+      "clips": 4
+    }
+  },
+  "inference_ms_median": 33.54725850000051,
+  "inference_fps_median": 29.808695097990938,
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "counterfactual_pixel_difference_left_right": 0.14776202147525677
+}

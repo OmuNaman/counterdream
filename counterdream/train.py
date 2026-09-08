@@ -45,7 +45,7 @@ class DeviceReplay:
 
 
 @torch.no_grad()
-def validate(model, replay, device, batches=4, batch_size=16):
+def validate(model, replay, device, batches=4, batch_size=16, steps=8):
     rng = np.random.default_rng(90210)
     total_mse = 0.0
     repeat_mse = 0.0
@@ -60,8 +60,10 @@ def validate(model, replay, device, batches=4, batch_size=16):
             dtype=torch.bfloat16,
             enabled=str(device).startswith("cuda"),
         ):
-            pred = model.sample(context, acts, steps=8, seed=1234 + i)
-            shuffled = model.sample(context, acts.roll(1, 0), steps=8, seed=1234 + i)
+            pred = model.sample(context, acts, steps=steps, seed=1234 + i)
+            shuffled = model.sample(
+                context, acts.roll(1, 0), steps=steps, seed=1234 + i
+            )
             # fixed denoising corruption for comparable validation checkpoints
             gen = torch.Generator(device=device).manual_seed(850 + i)
             noise = torch.randn(target.shape, device=device, generator=gen)
@@ -85,6 +87,8 @@ def validate(model, replay, device, batches=4, batch_size=16):
         action_advantage_mse=(shuffled_mse - total_mse) / batches,
         fixed_noise_mse=denoise_loss / batches,
         validation_frames=batches * batch_size,
+        sampler_steps=steps,
+        sampler_sigma_max=5.0 if model.cfg.version == 1 else 20.0,
     )
 
 

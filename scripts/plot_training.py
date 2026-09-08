@@ -36,7 +36,7 @@ def plot(run, output):
         label="Repeat previous frame",
     )
     axes[0].set(
-        title="Held-out next-frame prediction",
+        title="Periodic validation monitor (64 windows)",
         ylabel="PSNR (dB) · higher is better",
         xlabel="Optimizer steps",
     )
@@ -55,6 +55,14 @@ def plot(run, output):
     fig.suptitle(
         "CounterDream · random initialization · Dust II", fontsize=14, fontweight="bold"
     )
+    if not all("sampler_sigma_max" in row for row in rows):
+        axes[0].set_title(
+            "Legacy monitor: sigma_max=5 (not release sampler)", fontsize=10
+        )
+        fig.supxlabel(
+            "Release evaluation uses sigma_max=20; compare its metrics separately.",
+            fontsize=9,
+        )
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=170)

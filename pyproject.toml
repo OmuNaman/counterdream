@@ -13,9 +13,10 @@ dependencies = ["torch>=2.6,<3", "numpy>=1.26,<3", "Pillow>=10", "h5py>=3.11", "
 [project.optional-dependencies]
 cloud = ["modal==1.4.3"]
 dev = ["pytest>=8", "httpx>=0.28"]
+reports = ["matplotlib>=3.9"]
 
 [tool.setuptools.packages.find]
 include = ["counterdream*"]
 
 [tool.setuptools.package-data]
-counterdream = ["static/*"]
+counterdream = ["static/*", "release.json"]

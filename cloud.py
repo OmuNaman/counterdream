@@ -82,14 +82,14 @@ def train_model(
     scaledown_window=2,
     volumes={"/artifacts": volume},
 )
-def evaluate_model(run: str = "dust2-v2", preview: bool = False):
+def evaluate_model(run: str = "dust2-v2", preview: bool = False, latest: bool = False):
     from counterdream.evaluate import evaluate
 
     if run not in ("pilot", "dust2-v1", "dust2-v2"):
         raise ValueError("Unknown run")
     root = Path("/artifacts/runs") / run
     result = evaluate(
-        root / ("latest.pt" if preview else "model.pt"),
+        root / ("latest.pt" if preview or latest else "model.pt"),
         "/artifacts/data",
         root / ("preview" if preview else "evaluation"),
     )
@@ -175,7 +175,7 @@ class Dreamer:
 
         torch.set_num_threads(2)
         self.model, self.checkpoint = load_model(
-            "/artifacts/runs/dust2-v1/model.pt", "cuda"
+            "/artifacts/runs/dust2-v2/evaluation/model.pt", "cuda"
         )
 
     @modal.method()
@@ -283,8 +283,8 @@ def fit(
 
 
 @app.local_entrypoint()
-def assess(run: str = "dust2-v2", preview: bool = False):
-    print(evaluate_model.remote(run, preview))
+def assess(run: str = "dust2-v2", preview: bool = False, latest: bool = False):
+    print(evaluate_model.remote(run, preview, latest))
 
 
 @app.local_entrypoint()
@@ -293,7 +293,7 @@ def diagnose():
 
 
 @app.local_entrypoint()
-def fetch(run: str = "dust2-v1", destination: str = "artifacts/dust2-v1"):
+def fetch(run: str = "dust2-v2", destination: str = "artifacts/dust2-v2"):
     """Download inference weights/reports, never multi-hundred-MB optimizer states."""
     from pathlib import PurePosixPath
 
@@ -324,7 +324,7 @@ def fetch(run: str = "dust2-v1", destination: str = "artifacts/dust2-v1"):
 
 
 @app.local_entrypoint()
-def play(seeds: str = "artifacts/dust2-v1/evaluation/seeds.npz"):
+def play(seeds: str = "artifacts/dust2-v2/evaluation/seeds.npz"):
     import uvicorn
     from counterdream.serve import make_app
 

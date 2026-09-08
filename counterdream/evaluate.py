@@ -55,7 +55,7 @@ def evaluate(checkpoint, data_root, output, steps=8, clips=4, frames=64):
     torch.save({k: ckpt[k] for k in ("config", "ema", "step", "run")}, out / "model.pt")
     replay = Replay(data_root, "val")
     val = DeviceReplay(replay, device)
-    result = validate(model, val, device, batches=16, batch_size=16)
+    result = validate(model, val, device, batches=16, batch_size=16, steps=steps)
     result.update(
         checkpoint_step=ckpt["step"],
         sampler_steps=steps,
