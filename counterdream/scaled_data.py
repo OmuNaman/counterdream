@@ -77,16 +77,31 @@ def episode_split(name, test_names):
     return "val" if value % 20 == 0 else "train"
 
 
-def prepare_shard(root, shard, test_names, limit=None, max_seconds=3300, commit=None):
+def prepare_shard(root, shard, test_names, limit=None, max_seconds=3300, commit=None, part=0, parts=1):
     if not re.fullmatch(r"hdf5_dm_july2021_\d+_to_\d+\.tar", shard):
         raise ValueError("Unknown archive name")
-    root = Path(root) / shard.removesuffix(".tar")
+    if not 0<=part<parts<=4:
+        raise ValueError("Main archive partition must be within 1–4 parts")
+    legacy = Path(root) / shard.removesuffix(".tar")
+    root = legacy if parts==1 else legacy.with_name(legacy.name+f"-part-{part}")
     root.mkdir(parents=True, exist_ok=True)
     manifest = root / "manifest.json"
     spec = dict(dataset=DATASET, revision=REVISION, shard=shard,
                 height=HEIGHT, width=WIDTH, format="npy-rgb-uint8",
                 test_split_sha256=hashlib.sha256("\n".join(sorted(test_names)).encode()).hexdigest())
     records = []
+    if parts>1:
+        spec.update(part=part,parts=parts)
+        if not manifest.exists() and (legacy/"manifest.json").exists():
+            old=json.loads((legacy/"manifest.json").read_text())
+            if not old.get("superseded_by"):
+                raise ValueError("Stop the original worker and retire its manifest before partitioning")
+            if any(old.get(k)!=v for k,v in spec.items() if k not in ("part","parts")):
+                raise ValueError("Original shard has different provenance or dimensions")
+            for record in old["episodes"]:
+                if int(Path(record["source"]).stem.rsplit("_",1)[1])%parts==part:
+                    records.append(dict(record,file=f"../{legacy.name}/{record['file']}",
+                                        actions=f"../{legacy.name}/{record['actions']}"))
     if manifest.exists():
         prior = json.loads(manifest.read_text())
         if any(prior.get(k) != v for k, v in spec.items()):
@@ -102,15 +117,17 @@ def prepare_shard(root, shard, test_names, limit=None, max_seconds=3300, commit=
         for member in archive:
             if not member.isfile() or not member.name.endswith(".hdf5") or member.name in done:
                 continue
+            name = Path(member.name).name
+            if not re.fullmatch(r"hdf5_dm_july2021_\d+\.hdf5", name):
+                raise ValueError("Unexpected episode name")
+            if int(Path(name).stem.rsplit("_",1)[1])%parts!=part:
+                continue
             if time.monotonic() - started > max_seconds or limit is not None and len(records) >= limit:
                 complete = False
                 break
             if not 0 < member.size <= 250_000_000:
                 raise ValueError("Unexpected source member size")
             payload = archive.extractfile(member).read()
-            name = Path(member.name).name
-            if not re.fullmatch(r"hdf5_dm_july2021_\d+\.hdf5", name):
-                raise ValueError("Unexpected episode name")
             with h5py.File(io.BytesIO(payload), "r") as ep:
                 ids = sorted(int(k.split("_")[1]) for k in ep if k.endswith("_x"))
                 if ids != list(range(1000)):
@@ -141,7 +158,7 @@ def prepare_shard(root, shard, test_names, limit=None, max_seconds=3300, commit=
                                 split=split, action_counts=actions[:, :13].sum(0).astype(int).tolist()))
             write_json(manifest, dict(**spec, complete=False, episodes=records))
             if len(records) % 20 == 0:
-                print(json.dumps(dict(shard=shard, episodes=len(records),
+                print(json.dumps(dict(shard=shard, part=part, parts=parts, episodes=len(records),
                                       seconds=round(time.monotonic()-started))), flush=True)
                 if commit:
                     commit()
@@ -162,11 +179,12 @@ def build_index(root, allow_partial=False):
         if not manifest["complete"] and not allow_partial:
             raise ValueError(f"Shard is incomplete: {path.parent.name}")
         manifests.append(dict(shard=manifest["shard"], complete=manifest["complete"],
+                              part=manifest.get("part",0),parts=manifest.get("parts",1),
                               sha256=hashlib.sha256(path.read_bytes()).hexdigest()))
         for item in manifest["episodes"]:
             record = dict(item)
-            record["file"] = (path.parent / item["file"]).relative_to(root).as_posix()
-            record["actions"] = (path.parent / item["actions"]).relative_to(root).as_posix()
+            record["file"] = (path.parent / item["file"]).resolve().relative_to(root.resolve()).as_posix()
+            record["actions"] = (path.parent / item["actions"]).resolve().relative_to(root.resolve()).as_posix()
             records.append(record)
     unique = {}
     duplicates = []

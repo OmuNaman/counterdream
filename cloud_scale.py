@@ -6,6 +6,7 @@ import modal
 from counterdream.cloud_config import VOLUME_NAME,DATA,PILOT,RUN,volume,gpu_base_image
 
 app = modal.App("counterdream-scale-v3")
+PARTITIONED_ARCHIVES = {"hdf5_dm_july2021_201_to_400.tar", "hdf5_dm_july2021_3201_to_3400.tar"}
 data_image = (modal.Image.debian_slim(python_version="3.11")
               .pip_install("numpy==1.26.4", "Pillow==11.1.0", "h5py==3.12.1", "requests==2.32.3")
               .add_local_python_source("counterdream")
@@ -72,7 +73,10 @@ def train_five(source: dict, batch: int = 12, seconds: int = 19800):
     index = json.loads(Path(DATA, "index.json").read_text())
     main_shards=[s for s in index["shards"] if s["shard"].endswith(".tar")]
     expert_shards=[s for s in index["shards"] if s["shard"]=="dataset_dm_expert_dust2.zip"]
-    if (index["partial"] or len(main_shards)!=28 or len(expert_shards)!=8
+    groups={name:[s for s in main_shards if s["shard"]==name] for name in {s["shard"] for s in main_shards}}
+    partitions_complete=all({s.get("part",0) for s in group}==set(range(4 if name in PARTITIONED_ARCHIVES else 1))
+                            for name,group in groups.items())
+    if (index["partial"] or len(groups)!=28 or not partitions_complete or len(expert_shards)!=8
             or index["counts"]["train"]<4_000_000):
         raise ValueError("Complete all 28 main archives and eight expert partitions before full training")
     # Platform preemption can restart the same input even with retries=0.
@@ -238,11 +242,11 @@ def fetch(destination: str = "artifacts/dust2-v3", weights: bool = False):
 
 @app.function(image=data_image, cpu=2, memory=4096, timeout=3600, retries=0,
               max_containers=16, scaledown_window=2, volumes={"/artifacts": volume})
-def prepare_part(shard: str, limit: int = 0):
+def prepare_part(shard: str, limit: int = 0, part: int = 0, parts: int = 1):
     from counterdream.scaled_data import prepare_shard
     test_names = set(Path("/root/diamond-test-split.txt").read_text().splitlines())
-    result = prepare_shard(DATA, shard, test_names, limit=limit or None, commit=volume.commit)
-    return dict(shard=shard, episodes=len(result["episodes"]), complete=result["complete"])
+    result = prepare_shard(DATA, shard, test_names, limit=limit or None, commit=volume.commit,part=part,parts=parts)
+    return dict(shard=shard, part=part, parts=parts, episodes=len(result["episodes"]), complete=result["complete"])
 
 
 @app.function(image=data_image, cpu=1, memory=2048, timeout=300, retries=0,
@@ -309,6 +313,24 @@ def progress():
     print(json.dumps(data_progress.remote()),flush=True)
 
 
+@app.function(image=data_image,cpu=1,memory=1024,timeout=120,retries=0,volumes={"/artifacts":volume})
+def retire_slow_archives():
+    from counterdream.scaled_data import write_json
+    for shard in PARTITIONED_ARCHIVES:
+        path=Path(DATA,shard.removesuffix(".tar"),"manifest.json")
+        if path.exists():
+            value=json.loads(path.read_text())
+            value["superseded_by"]="Four independently resumed partitions; original frame files retained"
+            write_json(path,value)
+    volume.commit()
+
+
+@app.local_entrypoint()
+def partition_slow():
+    retire_slow_archives.remote()
+    print("Original manifests retired; completed frame files retained.",flush=True)
+
+
 @app.local_entrypoint()
 def prepare(shards: int = 28, limit: int = 0):
     import requests
@@ -322,9 +344,11 @@ def prepare(shards: int = 28, limit: int = 0):
         r'hdf5_dm_july2021_\d+_to_\d+\.tar', x['path'])],
         key=lambda x: int(x['path'].split('_')[3]))[:shards]
     print(json.dumps(dict(archives=len(selected), source_bytes=sum(x["size"] for x in selected))), flush=True)
-    results = list(prepare_part.starmap([(x["path"], limit) for x in selected],return_exceptions=True))
-    failures = [dict(shard=entry["path"],error=type(result).__name__)
-                for entry,result in zip(selected,results) if isinstance(result,Exception)]
+    calls=[(x["path"],limit,part,4 if x["path"] in PARTITIONED_ARCHIVES else 1)
+           for x in selected for part in range(4 if x["path"] in PARTITIONED_ARCHIVES else 1)]
+    results = list(prepare_part.starmap(calls,return_exceptions=True))
+    failures = [dict(shard=entry[0],part=entry[2],error=type(result).__name__)
+                for entry,result in zip(calls,results) if isinstance(result,Exception)]
     print(json.dumps([x for x in results if not isinstance(x,Exception)]), flush=True)
     if failures:
         print(json.dumps(dict(failed_shards=failures)),flush=True)

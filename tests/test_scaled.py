@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import numpy as np
 import torch
 
@@ -31,6 +32,39 @@ def test_expert_sampling_keeps_coverage_and_adds_clean_examples():
     assert abs(weights.sum()-1)<1e-12
     assert weights[0]>.15
     assert (weights[1:]>0).all()
+
+
+def test_partition_resume_reuses_original_files_without_double_counting(tmp_path,monkeypatch):
+    import io
+    import tarfile
+    from counterdream import scaled_data
+    shard="hdf5_dm_july2021_1_to_200.tar"
+    old=tmp_path/shard.removesuffix(".tar")
+    old.mkdir()
+    records=[]
+    payload=io.BytesIO()
+    with tarfile.open(fileobj=payload,mode="w") as archive:
+        for i in range(4):
+            name=f"hdf5_dm_july2021_{i}.hdf5"
+            member=tarfile.TarInfo(name)
+            member.size=1
+            archive.addfile(member,io.BytesIO(b"x"))
+            (old/f"{i}.npy").write_bytes(b"preserved")
+            records.append(dict(source=name,sha256=f"hash-{i}",file=f"{i}.npy",actions=f"{i}.npy",
+                                frames=1000,split="train",action_counts=[0]*13))
+    (old/"manifest.json").write_text(json.dumps(dict(shard=shard,complete=False,episodes=records,superseded_by="parts",
+        dataset=scaled_data.DATASET,revision=scaled_data.REVISION,height=88,width=160,format="npy-rgb-uint8",
+        test_split_sha256=scaled_data.hashlib.sha256(b"").hexdigest())))
+    monkeypatch.setattr(scaled_data,"HTTPRangeReader",lambda url:io.BytesIO(payload.getvalue()))
+    for part in range(4):
+        result=scaled_data.prepare_shard(tmp_path,shard,set(),part=part,parts=4)
+        assert result["complete"] and len(result["episodes"])==1
+    index=build_index(tmp_path)
+    assert index["counts"]["train"]==4000
+    assert len(index["shards"])==4 and not index["identical_duplicates_skipped"]
+    for record in index["episodes"]:
+        assert (tmp_path/record["file"]).read_bytes()==b"preserved"
+        assert ".." not in Path(record["file"]).parts
 
 
 def test_disk_replay_causality_and_bounded_open_episodes(tmp_path,monkeypatch):

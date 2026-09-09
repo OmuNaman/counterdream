@@ -29,6 +29,9 @@ Its 28 main Dust II archives total 706,623,969,792 bytes. CPU workers process
 bounded byte ranges directly into RGB uint8 arrays in a Modal Volume; the raw
 archives are not copied to the user's laptop. Source episode SHA-256 values,
 dimensions, split assignment, and action counts are recorded.
+Two slow archives use four readers each. Their completed files are reused by
+partition manifests, then counted once in the dataset index. No raw recording
+is redownloaded merely to change its partition.
 An additional 190,000 frames from the expert Dust II archive provide cleaner
 control labels. The sampler mixes 65% uniform episodes, 20% rare-action-weighted
 episodes, and 15% expert episodes when expert data is available. Expert files
@@ -69,7 +72,7 @@ restart preempted functions even with retries disabled: the same training input
 can resume its checkpoint only within its original absolute allocation deadline.
 The deadline does not restart with the container. Sixteen CPU workers can
 prepare data concurrently; each call is limited to 3,600 seconds. The initial
-28-shard invocation has roughly a $3.54 CPU/RAM bound before platform preemptions
+34-part invocation has roughly a $4.30 CPU/RAM bound before platform preemptions
 or explicit resumptions; eight expert-data partitions add at most about $1.01
 per invocation before retries.
 
@@ -96,6 +99,9 @@ modal run cloud_stream.py::play
 Preparation is resumable per source episode. Complete the corpus before full
 training. A deliberately small prepared subset can be used for the short
 benchmark; its cached-data throughput is not full-corpus throughput.
+When migrating an existing unsplit preparation, stop that preparation app and
+run `modal run cloud_scale.py::partition_slow` once before resuming `prepare`.
+This retires only the two replaced manifests and keeps their frame files.
 The benchmark is saved separately in `runs/dust2-v3`. The full-corpus model
 starts freshly from random weights in `runs/dust2-v3-full`; pilot weights
 are not reused as a substitute for training on the complete corpus.
