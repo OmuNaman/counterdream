@@ -3,8 +3,35 @@
 Status: **full five-H100 training is running in the new authorized workspace**.
 It started on 2026-09-09 at 09:38:37 UTC from clean commit
 `b8240b2ccfd1b139b46a3da100b69ed1832c2693`, with an absolute allocation deadline
-of 15:08:37 UTC. All five ranks are loading their data. No full-run quality
-result is available yet.
+of 15:08:37 UTC. All five ranks loaded their data and the run has passed
+30,000 of 60,000 planned optimizer steps. Peak memory reported by rank zero
+is 67.74 GB, with roughly 0.225 seconds per training step. These are observed
+training measurements, not a claim of playable quality.
+
+Validation previews at 2,000, 10,000, 20,000, and 30,000 steps show recognizable scenes,
+weapons, and responses to controls. Turning still blurs and longer generated
+sequences drift or lose scene structure. Eight denoising passes retain more
+texture in some sequences than four, but can increase pixel error and nearly
+double inference time. Both settings remain candidates for later visual review;
+lower pixel error alone does not establish better gameplay. The final test split
+has not been evaluated. The halfway preview does not establish a clear
+improvement in sustained playability over the 20,000-step preview.
+
+The following eight-pass evaluations use the same 256 one-step validation
+windows and six 128-frame generated sequences. They differ from the smaller
+four-pass validation check used during training. Errors are pixel MSE on [0, 1]
+images; smaller values need not mean sharper images or more consistent gameplay.
+
+| Checkpoint | Next-frame MSE | Frame-128 MSE | Median generation time |
+| --- | ---: | ---: | ---: |
+| [10,000](reports/v3-validation-step-10000-8.json) | 0.01274 | 0.06593 | 45.8 ms |
+| [20,000](reports/v3-validation-step-20000-8.json) | 0.01209 | 0.06747 | 46.2 ms |
+| [30,000](reports/v3-validation-step-30000-8.json) | 0.01436 | 0.06663 | 56.3 ms |
+
+Generation times are measurements from individual cloud GPU sessions, excluding
+network delivery. Reports include checkpoint hashes, sampling settings, dataset
+counts, and evaluation-source hashes. No checkpoint has been selected for a v3
+release yet.
 
 The workspace passed its training check and complete corpus transfer.
 All 5,688 recordings transferred (241,422,928,128
@@ -22,7 +49,8 @@ the workers at 08:35 UTC. The API reported `workspace is disabled` without an
 account-level reason. The app is confirmed stopped with zero tasks.
 Optimization had not started, and this allocation produced no new trained
 checkpoint. The short pilot, full dataset preparation, and streaming checks are
-complete; improved full-model gameplay quality remains untested.
+complete. Intermediate full-model validation previews are now available, but
+improved playable quality has not been established.
 
 The interrupted run used clean commit `fd5813cb6c1055922cde2c554c5db46ebef6a24b`.
 Its original absolute allocation deadline was 13:48 UTC; no automatic replacement

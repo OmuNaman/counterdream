@@ -8,6 +8,9 @@ The [five-H100 scale experiment](docs/SCALE_V3.md) has prepared 5.688 million fr
 and verified cloud streaming. After the original workspace hit its spend limit,
 a newly authorized workspace passed an actual five-H100 training check. The full
 dataset transfer passed an exact index comparison, and full training is running there.
+The run has passed 30,000 of 60,000 planned steps. Intermediate validation previews
+show recognizable scenes and control responses, but turning and longer generated
+sequences remain unstable.
 The released results below describe v0.1.0;
 improved v3 quality is not yet established.
 

@@ -1,0 +1,87 @@
+{
+  "next_frame_mse": 0.014355434686876833,
+  "next_frame_psnr": 18.429836524009307,
+  "repeat_frame_mse": 0.013414419372566044,
+  "repeat_frame_psnr": 18.724281205133114,
+  "shuffled_action_mse": 0.02092466491740197,
+  "action_advantage_mse": 0.006569230230525136,
+  "fixed_noise_mse": 0.0008341659449797589,
+  "validation_frames": 256,
+  "sampler_steps": 8,
+  "sampler_sigma_max": 20.0,
+  "split": "val",
+  "checkpoint_step": 30000,
+  "checkpoint_sha256": "4767578f8f03000d4232737c3c4fe45daaac5ecac696210d1e9e3d47aad72444",
+  "config": {
+    "height": 88,
+    "width": 160,
+    "context": 8,
+    "action_dim": 51,
+    "base": 160,
+    "cond_dim": 768,
+    "sigma_data": 0.5,
+    "version": 3
+  },
+  "pretrained_weights": false,
+  "initialization": "random",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "dataset_counts": {
+    "train": 4956000,
+    "val": 232000,
+    "test": 500000
+  },
+  "evaluation_source_sha256": "c5268d085e15a5aca85f77a1758d9e9f102e860b5d6e237e84bcec7360c37570",
+  "rollout": {
+    "1": {
+      "mse": 0.00896625736883531,
+      "repeat_mse": 0.01100282889092341,
+      "clips": 6
+    },
+    "4": {
+      "mse": 0.019108165754005313,
+      "repeat_mse": 0.027039318830550958,
+      "clips": 6
+    },
+    "8": {
+      "mse": 0.031030877493321896,
+      "repeat_mse": 0.0395212946459651,
+      "clips": 6
+    },
+    "16": {
+      "mse": 0.05088245371977488,
+      "repeat_mse": 0.051736048267533384,
+      "clips": 6
+    },
+    "32": {
+      "mse": 0.05678492225706577,
+      "repeat_mse": 0.07030980878820021,
+      "clips": 6
+    },
+    "64": {
+      "mse": 0.058639357487360634,
+      "repeat_mse": 0.08673487758884828,
+      "clips": 6
+    },
+    "128": {
+      "mse": 0.06663271443297465,
+      "repeat_mse": 0.12930430844426155,
+      "clips": 6
+    }
+  },
+  "inference_ms_median": 56.29755249999846,
+  "inference_ms_p95": 59.01795379999886,
+  "export_sha256": "b8102fe2d00e08d5ea93e6149b4b2cb7d77adf2f81c79ec4f61f869aa7eca2f8",
+  "control_comparison": {
+    "shared_start": true,
+    "shared_noise": true,
+    "frames": 64,
+    "keyboard_turn_delta": 60,
+    "controls": [
+      "LEFT",
+      "RIGHT",
+      "FORWARD",
+      "JUMP",
+      "IDLE"
+    ]
+  }
+}
