@@ -43,10 +43,14 @@ def make_app(seed_path, predict, metadata=None, max_generated_frames=2000):
         seed_frames = seeds["frames"].copy()
         seed_actions = seeds["actions"].copy()
         names = seeds["names"].tolist()
-    if seed_frames.ndim != 5 or seed_frames.shape[1:] != (4, 64, 112, 3):
+    if seed_frames.ndim != 5 or seed_frames.shape[1:] not in ((4,64,112,3),(8,88,160,3)):
         raise ValueError("Unexpected seed shape")
-    if seed_actions.shape != (len(seed_frames), 3, 51):
+    context_frames,height,width,_=seed_frames.shape[1:]
+    if seed_actions.shape != (len(seed_frames), context_frames-1, 51):
         raise ValueError("Unexpected seed action shape")
+    if metadata and (metadata.get("context_frames",context_frames)!=context_frames or
+                     metadata.get("resolution",[width,height])!=[width,height]):
+        raise ValueError("Checkpoint and starting frames have different dimensions")
     app = FastAPI(title="CounterDream", docs_url=None, redoc_url=None)
     state = {"generated": 0}
     semaphore = asyncio.Semaphore(1)
@@ -69,8 +73,8 @@ def make_app(seed_path, predict, metadata=None, max_generated_frames=2000):
         return {
             "model": "CounterDream / Dust II",
             "spawns": names,
-            "resolution": [112, 64],
-            "context_frames": 4,
+            "resolution": [width, height],
+            "context_frames": context_frames,
             "budget_frames": max_generated_frames,
             "generated_frames": state["generated"],
             **(metadata or {}),
@@ -148,7 +152,7 @@ def make_app(seed_path, predict, metadata=None, max_generated_frames=2000):
                         1000 + spawn * 100000 + frame,
                     )
                     prediction = np.asarray(prediction, dtype=np.uint8)
-                    if prediction.shape != (64, 112, 3):
+                    if prediction.shape != (height, width, 3):
                         raise ValueError("Invalid predicted frame shape")
                     state["generated"] += 1
                 context = np.concatenate((context[1:], prediction[None]), axis=0)
@@ -222,6 +226,8 @@ def local_predict(checkpoint):
 
     return predict, {
         "device": device,
+        "resolution": [model.cfg.width,model.cfg.height],
+        "context_frames": model.cfg.context,
         "checkpoint_step": ckpt["step"],
         "pretrained_weights": False,
     }
