@@ -1,8 +1,8 @@
 # Five-GPU CS:GO experiment
 
-Status: short five-GPU benchmark completed; full data preparation and streaming
-verification in progress. No improved playable
-quality is claimed until generated rollouts have been evaluated.
+Status: five-GPU benchmark, full data preparation, and cloud streaming checks
+completed. Full training is ready to start. Improved playable quality is not
+established until generated rollouts have been evaluated.
 
 The user chose training from random initialization, with no DIAMOND or other
 pretrained weights. v0.1.0 remains available unchanged as the original release.
@@ -16,7 +16,13 @@ pretrained weights. v0.1.0 remains available unchanged as the original release.
 | Visual history | 4 frames | 8 frames |
 | Maximum training unroll | 2 frames | 4 frames |
 | GPUs per training allocation | 1 H100 | 5 H100 |
-| Source corpus target | 100,000 frames | Approximately 5.5 million frames |
+| Prepared corpus | 100,000 frames | 5,688,000 frames |
+
+The complete index contains **4,956,000 training frames**, **232,000 validation
+frames**, and **500,000 test frames**. All 42 preparation partitions are complete.
+Three byte-identical boundary recordings are counted once; two corrupt expert
+recordings are excluded as documented below. The index checksum, source manifests,
+action counts, and split counts are recorded in [the dataset report](reports/v3-data.json).
 
 Eight-frame history is approximately half a second at the source recording rate.
 It is not persistent spatial memory. Larger data and compute do not guarantee
@@ -95,7 +101,7 @@ modal run cloud_scale.py::prepare --shards 28
 modal run cloud_scale.py::expert
 modal run cloud_scale.py::index
 modal run cloud_scale.py::benchmark --batch 12
-modal run cloud_scale.py::train --batch 12 --seconds 19800
+modal run --detach cloud_scale.py::train --batch 12 --seconds 19800
 modal run cloud_scale.py::assess --split val --steps 4
 modal run cloud_scale.py::assess --split test --steps 4
 modal run cloud_scale.py::fetch --weights
@@ -105,6 +111,8 @@ modal run cloud_stream.py::play
 Preparation is resumable per source episode. Complete the corpus before full
 training. A deliberately small prepared subset can be used for the short
 benchmark; its cached-data throughput is not full-corpus throughput.
+The detached training app survives a local client disconnect; the same allocation
+deadline and function timeout still apply.
 When migrating an existing unsplit preparation, stop that preparation app and
 run `modal run cloud_scale.py::partition_slow` once before resuming `prepare`.
 This retires only the two replaced manifests and keeps their frame files.
