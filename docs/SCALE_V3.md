@@ -62,10 +62,14 @@ network/storage/account-specific charges or credits.
 The benchmark function has a 900-second hard timeout (about $5.30 maximum base
 compute). The full training function has a 21,600-second hard timeout (about
 $127.20 maximum base compute), with its loop limited to 19,800 seconds and
-early checkpointing. It has no automatic retries and records a persistent
-marker preventing an accidental second full allocation. Eight CPU workers can
+early checkpointing. It has no application-level automatic retries and records
+a persistent marker preventing an accidental second full allocation. Modal can
+restart preempted functions even with retries disabled: the same training input
+can resume its checkpoint only within its original absolute allocation deadline.
+The deadline does not restart with the container. Eight CPU workers can
 prepare data concurrently; each call is limited to 3,600 seconds. The initial
-28-shard invocation has roughly a $3.54 CPU/RAM upper bound at requested resources.
+28-shard invocation has roughly a $3.54 CPU/RAM bound before platform preemptions
+or explicit resumptions; each expert-data invocation adds at most about $0.13.
 
 These are application limits, not a Modal account spending cap. Existing project
 spend was estimated below $15, not reconciled against an invoice. Reserve room

@@ -74,20 +74,35 @@ def verify():
               timeout=21600, retries=0, max_containers=1, scaledown_window=2,
               volumes={"/artifacts": volume})
 def train_five(source: dict, batch: int = 12, seconds: int = 19800):
+    import time
     if not 600 <= seconds <= 19800 or not 1 <= batch <= 24:
         raise ValueError("Full run is capped at 5.5 training hours")
     index = json.loads(Path(DATA, "index.json").read_text())
     if index["counts"]["train"] < 1_000_000:
         raise ValueError("Prepare at least one million training frames first")
-    # A committed launch marker prevents an accidental second full paid run.
+    # Platform preemption can restart the same input even with retries=0.
+    # Its stable allocation ID may resume, but the wall-clock deadline never resets.
     marker = Path(RUN, "full-allocation.json")
     marker.parent.mkdir(parents=True,exist_ok=True)
     if marker.exists():
-        raise ValueError("Full allocation already used; inspect progress and budget first")
-    marker.write_text(json.dumps(dict(seconds=seconds, maximum_function_seconds=21600,
-                                     gpu_count=5, source=source), indent=2))
-    volume.commit()
-    return _launch(seconds, batch, source, resume=False, output=RUN, gpu_replay=True)
+        allocation = json.loads(marker.read_text())
+        if allocation["allocation_id"] != source.get("allocation_id"):
+            raise ValueError("Full allocation already used; inspect progress and budget first")
+        complete = Path(RUN,"complete.json")
+        if complete.exists():
+            return json.loads(complete.read_text())
+    else:
+        if not source.get("allocation_id"):
+            raise ValueError("Training requires a stable allocation ID")
+        allocation = dict(seconds=seconds,maximum_function_seconds=21600,gpu_count=5,
+                          allocation_id=source["allocation_id"],source=source,
+                          started_epoch=time.time(),deadline_epoch=time.time()+seconds)
+        marker.write_text(json.dumps(allocation,indent=2))
+        volume.commit()
+    remaining = int(allocation["deadline_epoch"]-time.time())
+    if remaining<200:
+        raise RuntimeError("Training allocation deadline exhausted; saved checkpoints remain available")
+    return _launch(remaining,batch,source,resume=Path(RUN,"latest.pt").exists(),output=RUN,gpu_replay=True)
 
 
 def source_manifest():
@@ -106,7 +121,9 @@ def benchmark(batch: int = 12):
 
 @app.local_entrypoint()
 def train(batch: int = 12, seconds: int = 19800):
-    print(json.dumps(train_five.remote(source_manifest(), batch, seconds)), flush=True)
+    import uuid
+    source = dict(source_manifest(),allocation_id=uuid.uuid4().hex)
+    print(json.dumps(train_five.remote(source,batch,seconds)),flush=True)
 
 
 @app.function(image=gpu_image, gpu="H100", cpu=4, memory=16384,
