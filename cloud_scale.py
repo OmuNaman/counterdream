@@ -263,12 +263,20 @@ def index_data(partial: bool = False):
 def prepare_expert_data(part: int = 0):
     from counterdream.scaled_data import prepare_expert
     result = prepare_expert(DATA,commit=volume.commit,part=part,parts=8)
-    return dict(part=part,episodes=len(result["episodes"]),complete=result["complete"])
+    return dict(part=part,episodes=len(result["episodes"]),excluded=len(result.get("excluded",[])),complete=result["complete"])
 
 
 @app.local_entrypoint()
 def expert():
-    print(json.dumps(list(prepare_expert_data.map(range(8)))),flush=True)
+    _prepare_experts()
+
+
+def _prepare_experts():
+    results=list(prepare_expert_data.map(range(8),return_exceptions=True))
+    print(json.dumps([r if not isinstance(r,Exception) else dict(part=i,error=type(r).__name__)
+                      for i,r in enumerate(results)]),flush=True)
+    if any(isinstance(r,Exception) for r in results):
+        raise RuntimeError("Some expert partitions need resumption; other completed files are preserved")
 
 
 @app.function(image=data_image,cpu=1,memory=1024,timeout=120,retries=0,
@@ -288,7 +296,7 @@ def retire_expert_pilot():
 @app.local_entrypoint()
 def partition_expert():
     print(json.dumps(retire_expert_pilot.remote()),flush=True)
-    print(json.dumps(list(prepare_expert_data.map(range(8)))),flush=True)
+    _prepare_experts()
 
 
 @app.local_entrypoint()

@@ -67,6 +67,28 @@ def test_partition_resume_reuses_original_files_without_double_counting(tmp_path
         assert ".." not in Path(record["file"]).parts
 
 
+def test_verified_zip_entries_with_truncated_hdf5_are_excluded_and_recorded(tmp_path,monkeypatch):
+    import io
+    import zipfile
+    import h5py
+    from counterdream import scaled_data
+    hdf=io.BytesIO()
+    with h5py.File(hdf,"w") as stream:
+        stream.create_dataset("data",data=np.arange(100))
+    truncated=hdf.getvalue()[:-33]
+    packed=io.BytesIO()
+    with zipfile.ZipFile(packed,"w") as archive:
+        for i in range(190):
+            archive.writestr(f"expert/record-{i}.hdf5",truncated)
+    monkeypatch.setattr(scaled_data,"RemoteZipReader",lambda url,size:io.BytesIO(packed.getvalue()))
+    result=scaled_data.prepare_expert(tmp_path,part=0,parts=8)
+    assert result["complete"] and not result["episodes"]
+    assert len(result["excluded"])==24
+    assert all(r["source_bytes"]==len(truncated) and "CRC verified" in r["reason"] for r in result["excluded"])
+    report=build_index(tmp_path)
+    assert report["counts"]["train"]==0 and len(report["excluded_source_files"])==24
+
+
 def test_disk_replay_causality_and_bounded_open_episodes(tmp_path,monkeypatch):
     records = []
     for i in range(4):

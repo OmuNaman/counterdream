@@ -32,8 +32,12 @@ dimensions, split assignment, and action counts are recorded.
 Two slow archives use four readers each. Their completed files are reused by
 partition manifests, then counted once in the dataset index. No raw recording
 is redownloaded merely to change its partition.
-An additional 190,000 frames from the expert Dust II archive provide cleaner
-control labels. The sampler mixes 65% uniform episodes, 20% rare-action-weighted
+The expert Dust II archive contains 190 recording entries with cleaner control
+labels. At least one HDF5 entry is truncated in the source archive. Such files
+are excluded only after verifying their ZIP member length and CRC; their source
+name, size, checksum, and exclusion reason remain in the dataset index. The
+actual usable frame count is reported after preparation.
+The sampler mixes 65% uniform episodes, 20% rare-action-weighted
 episodes, and 15% expert episodes when expert data is available. Expert files
 also have a separate deterministic validation split.
 

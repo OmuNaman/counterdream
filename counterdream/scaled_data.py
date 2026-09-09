@@ -171,11 +171,12 @@ def prepare_shard(root, shard, test_names, limit=None, max_seconds=3300, commit=
 
 def build_index(root, allow_partial=False):
     root = Path(root)
-    records, manifests = [], []
+    records, manifests, excluded = [], [], []
     for path in sorted(root.glob("*/manifest.json")):
         manifest = json.loads(path.read_text())
         if manifest.get("superseded_by"):
             continue
+        excluded.extend(dict(item,shard=manifest["shard"]) for item in manifest.get("excluded",[]))
         if not manifest["complete"] and not allow_partial:
             raise ValueError(f"Shard is incomplete: {path.parent.name}")
         manifests.append(dict(shard=manifest["shard"], complete=manifest["complete"],
@@ -199,7 +200,7 @@ def build_index(root, allow_partial=False):
     records = list(unique.values())
     report = dict(dataset=DATASET, revision=REVISION, height=HEIGHT, width=WIDTH,
                   partial=any(not x["complete"] for x in manifests), shards=manifests, identical_duplicates_skipped=duplicates,
-                  episodes=records, counts={s: sum(x["frames"] for x in records if x["split"]==s)
+                  excluded_source_files=excluded, episodes=records, counts={s: sum(x["frames"] for x in records if x["split"]==s)
                                            for s in ("train", "val", "test")})
     write_json(root / "index.json", report)
     return report
@@ -300,7 +301,7 @@ def prepare_expert(root,commit=None,max_seconds=3300,part=0,parts=1):
     spec = dict(dataset=DATASET,revision=REVISION,shard=shard,height=HEIGHT,width=WIDTH,
                 format="npy-rgb-uint8",expert=True,part=part,parts=parts,
                 source_archive_sha256="49bc679d4a7a6c0a80fb35f6c3b09a9dd6161bac87ac5aa2732aec41dcabd19f")
-    records = []
+    records, excluded = [], []
     if manifest.exists():
         old = json.loads(manifest.read_text())
         if any(old.get(k)!=v for k,v in spec.items()):
@@ -308,7 +309,8 @@ def prepare_expert(root,commit=None,max_seconds=3300,part=0,parts=1):
         if old["complete"]:
             return old
         records = old["episodes"]
-    done = {x["source"] for x in records}
+        excluded = old.get("excluded",[])
+    done = {x["source"] for x in records+excluded}
     started = time.monotonic()
     complete = True
     with RemoteZipReader(f"https://huggingface.co/datasets/{DATASET}/resolve/{REVISION}/{shard}",size) as source:
@@ -325,7 +327,23 @@ def prepare_expert(root,commit=None,max_seconds=3300,part=0,parts=1):
                 if not 0 < member.file_size <= 250_000_000:
                     raise ValueError("Unexpected expert source file size")
                 payload = archive.read(member)
-                with h5py.File(io.BytesIO(payload),"r") as ep:
+                try:
+                    episode=h5py.File(io.BytesIO(payload),"r")
+                except OSError as exc:
+                    # ZipFile.read verified this entry's CRC. A truncated HDF5
+                    # of exactly the declared member size is corrupt at source.
+                    if "truncated file:" not in str(exc) or len(payload)!=member.file_size:
+                        raise
+                    rejection=dict(source=member.filename,sha256=hashlib.sha256(payload).hexdigest(),
+                                   source_bytes=len(payload),zip_crc32=member.CRC,
+                                   reason="Source HDF5 is truncated; ZIP member length and CRC verified")
+                    excluded.append(rejection)
+                    write_json(manifest,dict(**spec,complete=False,episodes=records,excluded=excluded))
+                    print(json.dumps(dict(excluded_source=rejection)),flush=True)
+                    if commit:
+                        commit()
+                    continue
+                with episode as ep:
                     ids = sorted(int(k.split("_")[1]) for k in ep if k.endswith("_x"))
                     if ids != list(range(1000)):
                         raise ValueError("Expected 1000 contiguous expert frames")
@@ -352,12 +370,12 @@ def prepare_expert(root,commit=None,max_seconds=3300,part=0,parts=1):
                                     actions=ap.relative_to(root).as_posix(),expert=True,
                                     frames=1000,split=split,sha256=hashlib.sha256(payload).hexdigest(),
                                     action_counts=actions[:,:13].sum(0).astype(int).tolist()))
-                write_json(manifest,dict(**spec,complete=False,episodes=records))
+                write_json(manifest,dict(**spec,complete=False,episodes=records,excluded=excluded))
                 if len(records)%20==0:
                     print(json.dumps(dict(expert_episodes=len(records),seconds=time.monotonic()-started)),flush=True)
                     if commit:
                         commit()
-    result = dict(**spec,complete=complete,episodes=records)
+    result = dict(**spec,complete=complete,episodes=records,excluded=excluded)
     write_json(manifest,result)
     if commit:
         commit()
