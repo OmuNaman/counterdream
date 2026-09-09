@@ -154,8 +154,10 @@ def run(args):
             raise RuntimeError("Distributed ranks disagree on model weights")
         if rank == 0:
             score = float("inf") if metrics is None else metrics["selection_score"]
-            improved = score < best
-            best = min(score, best)
+            # Keep step zero as a reported baseline, not a release candidate.
+            improved = step > 0 and score < best
+            if step > 0:
+                best = min(score, best)
             total_seconds = previous_seconds + time.monotonic() - started
             checkpoint = dict(config=asdict(cfg), model=raw.state_dict(), ema=ema.state_dict(),
                               optimizer=optimizer.state_dict(), step=step, run=info,
@@ -163,11 +165,16 @@ def run(args):
             tmp = root / "latest.tmp"
             torch.save(checkpoint, tmp)
             tmp.replace(root / "latest.pt")
-            if improved:
+            if improved or step > 0 and step % 10000 == 0:
                 lightweight = {k: checkpoint[k] for k in ("config", "ema", "step", "run")}
-                tmp = root / "best.tmp"
-                torch.save(lightweight, tmp)
-                tmp.replace(root / "best.pt")
+                if improved:
+                    tmp = root / "best.tmp"
+                    torch.save(lightweight, tmp)
+                    tmp.replace(root / "best.pt")
+                if step > 0 and step % 10000 == 0:
+                    tmp = root / f"ema-step-{step}.tmp"
+                    torch.save(lightweight, tmp)
+                    tmp.replace(root / f"ema-step-{step}.pt")
             if args.commit_volume:
                 import modal
                 modal.Volume.from_name(args.commit_volume).commit()

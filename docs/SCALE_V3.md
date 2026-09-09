@@ -85,6 +85,9 @@ denoised training context with a fully sampled generated frame. The final
 checkpoint is selected by validation rollout error across 16 clips at 8, 16, and 32 steps,
 rather than one-step image error alone. Human inspection of videos is also
 required: low pixel error can reward blur.
+The step-zero evaluation is retained as an untrained baseline but cannot become
+the selected trained checkpoint. EMA snapshots every 10,000 steps are also kept
+for validation-based visual comparisons before any final test evaluation.
 
 ## Cost and runtime bounds
 
