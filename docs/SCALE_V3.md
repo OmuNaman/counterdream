@@ -33,10 +33,10 @@ Two slow archives use four readers each. Their completed files are reused by
 partition manifests, then counted once in the dataset index. No raw recording
 is redownloaded merely to change its partition.
 The expert Dust II archive contains 190 recording entries with cleaner control
-labels. At least one HDF5 entry is truncated in the source archive. Such files
+labels. Two HDF5 entries (expert recordings 90 and 96) are truncated in the source archive. Such files
 are excluded only after verifying their ZIP member length and CRC; their source
 name, size, checksum, and exclusion reason remain in the dataset index. The
-actual usable frame count is reported after preparation.
+usable expert set contains 188,000 frames.
 The sampler mixes 65% uniform episodes, 20% rare-action-weighted
 episodes, and 15% expert episodes when expert data is available. Expert files
 also have a separate deterministic validation split.
@@ -76,6 +76,8 @@ restart preempted functions even with retries disabled: the same training input
 can resume its checkpoint only within its original absolute allocation deadline.
 The deadline does not restart with the container. Sixteen CPU workers can
 prepare data concurrently; each call is limited to 3,600 seconds. The initial
+preparation dispatch skips completed parts and uses one input per container,
+preventing fast no-op inputs from skewing the scheduling of longer work. The
 34-part invocation has roughly a $4.30 CPU/RAM bound before platform preemptions
 or explicit resumptions; eight expert-data partitions add at most about $1.01
 per invocation before retries.

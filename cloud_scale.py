@@ -241,10 +241,12 @@ def fetch(destination: str = "artifacts/dust2-v3", weights: bool = False):
 
 
 @app.function(image=data_image, cpu=2, memory=4096, timeout=3600, retries=0,
-              max_containers=16, scaledown_window=2, volumes={"/artifacts": volume})
+              max_containers=16, scaledown_window=2, single_use_containers=True,
+              volumes={"/artifacts": volume})
 def prepare_part(shard: str, limit: int = 0, part: int = 0, parts: int = 1):
     from counterdream.scaled_data import prepare_shard
     test_names = set(Path("/root/diamond-test-split.txt").read_text().splitlines())
+    print(json.dumps(dict(starting_shard=shard,part=part,parts=parts)),flush=True)
     result = prepare_shard(DATA, shard, test_names, limit=limit or None, commit=volume.commit,part=part,parts=parts)
     return dict(shard=shard, part=part, parts=parts, episodes=len(result["episodes"]), complete=result["complete"])
 
@@ -354,6 +356,10 @@ def prepare(shards: int = 28, limit: int = 0):
     print(json.dumps(dict(archives=len(selected), source_bytes=sum(x["size"] for x in selected))), flush=True)
     calls=[(x["path"],limit,part,4 if x["path"] in PARTITIONED_ARCHIVES else 1)
            for x in selected for part in range(4 if x["path"] in PARTITIONED_ARCHIVES else 1)]
+    completed={row["shard"] for row in data_progress.remote()["shards"] if row["complete"]}
+    calls=[entry for entry in calls if entry[0].removesuffix(".tar")+
+           (f"-part-{entry[2]}" if entry[3]>1 else "") not in completed]
+    print(json.dumps(dict(remaining_parts=len(calls),single_use_workers=True)),flush=True)
     results = list(prepare_part.starmap(calls,return_exceptions=True))
     failures = [dict(shard=entry[0],part=entry[2],error=type(result).__name__)
                 for entry,result in zip(calls,results) if isinstance(result,Exception)]
