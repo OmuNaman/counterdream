@@ -128,21 +128,25 @@ def train(batch: int = 12, seconds: int = 19800):
 @app.function(image=gpu_image, gpu="H100", cpu=4, memory=16384,
               timeout=1800, retries=0, max_containers=1, scaledown_window=2,
               volumes={"/artifacts": volume})
-def evaluate_run(split: str = "val", steps: int = 4, pilot: bool = False):
+def evaluate_run(split: str = "val", steps: int = 4, pilot: bool = False, checkpoint_step: int = 0):
     from counterdream.evaluate_scaled import evaluate
     if split not in ("val", "test") or steps not in (4,8):
         raise ValueError("Choose val/test and 4/8 sampling steps")
     if pilot and split != "val":
         raise ValueError("Pilot evaluation is validation-only")
+    if checkpoint_step not in range(0, 60001, 10000) or pilot and checkpoint_step:
+        raise ValueError("Choose best (0) or a full-run EMA milestone from 10000 to 60000")
     folder = PILOT if pilot else RUN
-    result = evaluate(Path(folder,"best.pt"),DATA,Path(folder,f"evaluation-{split}-{steps}"),split=split,steps=steps)
+    checkpoint = f"ema-step-{checkpoint_step}.pt" if checkpoint_step else "best.pt"
+    suffix = f"-step-{checkpoint_step}" if checkpoint_step else ""
+    result = evaluate(Path(folder,checkpoint),DATA,Path(folder,f"evaluation-{split}-{steps}{suffix}"),split=split,steps=steps)
     volume.commit()
     return result
 
 
 @app.local_entrypoint()
-def assess(split: str = "val", steps: int = 4, pilot: bool = False):
-    print(json.dumps(evaluate_run.remote(split,steps,pilot)),flush=True)
+def assess(split: str = "val", steps: int = 4, pilot: bool = False, checkpoint_step: int = 0):
+    print(json.dumps(evaluate_run.remote(split,steps,pilot,checkpoint_step)),flush=True)
 
 
 @app.cls(image=gpu_image, gpu="H100", cpu=4, memory=16384,

@@ -98,6 +98,18 @@ The step-zero evaluation is retained as an untrained baseline but cannot become
 the selected trained checkpoint. EMA snapshots every 10,000 steps are also kept
 for validation-based visual comparisons before any final test evaluation.
 
+To inspect a saved milestone even when pixel-error selection still favors an
+earlier checkpoint:
+
+```powershell
+modal run cloud_scale.py::assess --split val --steps 4 --checkpoint-step 10000
+```
+
+This reads `ema-step-10000.pt` and writes
+`evaluation-val-4-step-10000`, preserving the default best-checkpoint evaluation.
+The report records the actual checkpoint step and hash. Omitting the option
+continues to evaluate `best.pt`.
+
 ## Cost and runtime bounds
 
 Rates checked 2026-09-09 at [Modal pricing](https://modal.com/pricing).
