@@ -180,6 +180,19 @@ modal run cloud_scale.py::fetch --weights
 modal run cloud_stream.py::play
 ```
 
+To try the current training checkpoint before release selection, run:
+
+```sh
+modal run cloud_stream.py::play --variant latest
+```
+
+This exports a frozen EMA copy of `latest.pt` on a CPU worker, verifies its hashes,
+and prepares six starting views from validation only. It leaves training running
+and does not evaluate the test split. The page shows the pinned training step;
+new training saves do not change an active viewer. Open `http://127.0.0.1:7860/`
+and choose Connect & Play to start a separate H100. This preview defaults to eight
+sampling passes, with four available for faster inference.
+
 Preparation is resumable per source episode. Complete the corpus before full
 training. A deliberately small prepared subset can be used for the short
 benchmark; its cached-data throughput is not full-corpus throughput.
@@ -205,8 +218,12 @@ Controls and frames flow independently, with a target of 16 generated frames
 per second. Missing control heartbeats stop generation after half a second.
 Network latency still delays control response, even when frames arrive smoothly.
 The viewer has a 12,000-frame budget and 15-minute connection limit. The cloud
-function shuts down after 90 idle seconds or 30 active minutes, with a 1,900-second
-hard timeout. Restarting the local viewer explicitly allocates another session.
+function shuts down after 90 idle seconds, with a 1,900-second hard timeout.
+Reconnect can start a replacement after idle shutdown, with at most three GPU
+starts inside one fixed 30-minute window beginning with the first connection.
+Reconnecting does not extend that window; even replacement workers share its
+deadline. A GPU worker allows at most 12,000 frames. Starting the local viewer
+again explicitly begins a new allocation window.
 Closing the local app cancels its GPU call. The older per-frame RPC viewer in
 `cloud_scale.py` is retained for comparison, not the recommended play command.
 

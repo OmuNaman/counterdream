@@ -8,7 +8,7 @@ import time
 import websockets
 
 
-async def measure(url="ws://127.0.0.1:7860/ws?spawn=0", headers=None):
+async def measure(url="ws://127.0.0.1:7860/ws?spawn=0", headers=None, steps=4):
     sent, times, responses, gpu = {}, [], [], []
     async with websockets.connect(url, additional_headers=headers, open_timeout=45) as ws:
         initial = json.loads(await asyncio.wait_for(ws.recv(), timeout=600))
@@ -22,7 +22,7 @@ async def measure(url="ws://127.0.0.1:7860/ws?spawn=0", headers=None):
             while True:
                 seq += 1
                 sent[seq] = time.perf_counter()
-                await ws.send(json.dumps(dict(type="step", keys=["w"], dx=10, steps=4)))
+                await ws.send(json.dumps(dict(type="step", keys=["w"], dx=10, steps=steps)))
                 await asyncio.sleep(1/16)
 
         task = asyncio.create_task(controls())
@@ -45,7 +45,7 @@ async def measure(url="ws://127.0.0.1:7860/ws?spawn=0", headers=None):
             await asyncio.gather(task, return_exceptions=True)
             await ws.send(json.dumps(dict(type="pause")))
     gaps = [(b-a)*1000 for a,b in zip(times[8:-1], times[9:])]
-    return dict(frames=len(times), frame_ms_median=statistics.median(gaps),
+    return dict(frames=len(times), sampling_steps=steps, frame_ms_median=statistics.median(gaps),
                 delivered_fps=87/(times[-1]-times[8]),
                 first_control_response_ms=(times[0]-started)*1000,
                 control_response_ms_median=statistics.median(responses[8:]),
@@ -57,8 +57,9 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("artifacts/network-stream-proxy.json"))
+    parser.add_argument("--steps", type=int, choices=(4,8,16), default=4)
     args = parser.parse_args()
-    report = dict(asyncio.run(measure()), transport="local proxy and authenticated cloud TLS websocket")
+    report = dict(asyncio.run(measure(steps=args.steps)), transport="local proxy and authenticated cloud TLS websocket")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2))
     print(json.dumps(report))

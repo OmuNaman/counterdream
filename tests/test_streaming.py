@@ -57,4 +57,16 @@ def test_local_proxy_rejects_foreign_origin_before_gpu_allocation():
         assert client.get("/api/info").json()["streaming"]
         with pytest.raises(WebSocketDisconnect):
             with client.websocket_connect("/ws", headers={"origin": "https://example.com"}):
-                pass
+                    pass
+
+
+def test_live_metadata_sets_sampler_and_expired_allocation_explains_failure():
+    from counterdream.stream_lease import AllocationEnded
+    async def remote():
+        raise AllocationEnded("This 30-minute viewer allocation has ended.")
+    with TestClient(make_stream_proxy(dict(spawns=["Val 1"], recommended_steps=8,
+                                          checkpoint_step=34000), remote)) as client:
+        info = client.get("/api/info").json()
+        assert info["recommended_steps"] == 8 and info["checkpoint_step"] == 34000
+        with client.websocket_connect("/ws") as ws:
+            assert "30-minute" in ws.receive_json()["error"]

@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from pydantic import ValidationError
 
 from .serve import Control
+from .stream_lease import AllocationEnded
 
 
 def make_gpu_stream(engine,token,activity,frame_budget=12000):
@@ -131,6 +132,7 @@ def make_stream_proxy(metadata,get_remote):
     import websockets
     app=FastAPI(docs_url=None,redoc_url=None)
     static=Path(__file__).parent/"static"
+    connection={"active":False}
 
     @app.get("/")
     def index():
@@ -146,7 +148,7 @@ def make_stream_proxy(metadata,get_remote):
 
     @app.get("/api/info")
     def info():
-        return dict(metadata,streaming=True,recommended_steps=4,budget_frames=12000,generated_frames=0)
+        return dict(metadata,streaming=True,recommended_steps=metadata.get("recommended_steps",4),budget_frames=12000,generated_frames=0)
 
     @app.websocket("/ws")
     async def play(ws:WebSocket):
@@ -160,6 +162,10 @@ def make_stream_proxy(metadata,get_remote):
         except ValueError:
             await ws.close(code=1008)
             return
+        if connection["active"]:
+            await ws.close(code=1013)
+            return
+        connection["active"]=True
         await ws.accept()
         tasks=[]
         try:
@@ -188,8 +194,10 @@ def make_stream_proxy(metadata,get_remote):
         except Exception as exc:
             print(f"Streaming connection: {type(exc).__name__}",flush=True)
             with suppress(Exception):
-                await ws.send_json({"error":"Cloud stream stopped. Restart the viewer to allocate another session."})
+                await ws.send_json({"error":str(exc) if isinstance(exc,AllocationEnded) else
+                                   "Cloud stream stopped. Press Reconnect to try again."})
         finally:
+            connection["active"]=False
             for task in tasks:
                 task.cancel()
             if tasks:
