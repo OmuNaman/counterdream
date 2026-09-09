@@ -1,0 +1,80 @@
+{
+  "purpose": "Compute, gradients, distributed consistency, and memory check; not a gameplay-quality result",
+  "run": {
+    "config": {
+      "height": 88,
+      "width": 160,
+      "context": 8,
+      "action_dim": 51,
+      "base": 160,
+      "cond_dim": 768,
+      "sigma_data": 0.5,
+      "version": 3
+    },
+    "world_size": 5,
+    "seed": 42,
+    "initialization": "random",
+    "pretrained_weights": false,
+    "parameters": 61827651,
+    "batch_per_gpu": 12,
+    "global_batch": 60,
+    "dataset_counts": {
+      "train": 2000,
+      "val": 1000,
+      "test": 1000
+    },
+    "planned_steps": 128,
+    "dataset_index_sha256": "92f98bc6c7d2b74a812472602b65274195461983c2d7ec4042b464b4ddb52482",
+    "validation_selection_reset": false,
+    "replay_storage": "disk mmap",
+    "max_seconds": 300,
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "torch_version": "2.6.0+cu124",
+    "resumed_from_step": 0,
+    "validation_sampler_steps": 4,
+    "validation_rollout_clips": 16,
+    "selection": "mean rollout MSE at horizons 8,16,32 over 16 validation clips",
+    "source": {
+      "git_commit": "78e6182f94691656f02398d22b13ffcc56051a14",
+      "dirty": false,
+      "sha256": {
+        "counterdream/__init__.py": "730222dc07d2081f8eb675d227fe70c0bf2eefb4150e869e3887ddbe9cb63238",
+        "counterdream/actions.py": "a593bc01e2e4db14849d1e4d6590769ddb0861c30595388415e16c384319d0f4",
+        "counterdream/benchmark_stream.py": "d5dd26fbfc75cba9a51a90d8baeda87f70b0156baadc85e4bb478b0cd38b37ad",
+        "counterdream/cloud_config.py": "c87d0fc28678ab4df54d19d866a7883ea1e9ec750b65090317dd57b2ea67f7df",
+        "counterdream/cloud_viewer.py": "85f595c76eff3f867be1c53d25d5db16c332b704f697276db0e8045a2db4912e",
+        "counterdream/data.py": "116b9cd6bdee313a705573db5aecefbeccb7e2ea250cbfb9e92714eb9b29756b",
+        "counterdream/download.py": "92ae7b20d86e65523fd8db3bcb00e8d26d1b78ad2ea9dd7692a8d8315a669b20",
+        "counterdream/evaluate.py": "d8541e32db7244ae36395b7504e4bfda273aeda1dd850f9167afd95bf02ae736",
+        "counterdream/evaluate_scaled.py": "c5268d085e15a5aca85f77a1758d9e9f102e860b5d6e237e84bcec7360c37570",
+        "counterdream/model.py": "b4e1b5c3e74e0579c94c6f4cba7d104d611d501ecefa18df0a2cbe371352feb7",
+        "counterdream/remote_runtime.py": "587415a9b053b314aaac9bc5e655d80c16701b55f2f7c7a47929276ed5e2747d",
+        "counterdream/scaled_data.py": "77d9a8571609e80da0d7760faa46251a8f44f9dbcb1c18d99f2c11cd3cad120a",
+        "counterdream/serve.py": "62e5be9ea322efe1d2a266a895bf239f37ca739842248d78c51b490a2ac1e184",
+        "counterdream/streaming.py": "a503abc5a51dcbfa70476f7a7d707a385d99a3188228bf8a68eaf01a625c525d",
+        "counterdream/train.py": "df7855988ec21702668b2d303e837d1618ce6c34404e7a47d2f435804429db20",
+        "counterdream/train_distributed.py": "befb81450d9317b9b7e4a38a92726611df862e041dba1e8131704c5d4f1717f4",
+        "cloud_scale.py": "02d16593b6e2fcac64c90597064753883f2ee097d3cbb34351dc5c51f3dfb072",
+        "cloud_stream.py": "1fa2e58bbfd87c2e58384e1f89102d14eaa5e7aaf2504f662d5f8e3d3eb57e29",
+        "cloud_transfer.py": "48b12ae5b6b807bf6e8c77d905d9df81b18c4df08bdb49b58caa77f213b3b1f3",
+        "cloud_workspace.py": "d3fa0e28fee1e3bb3b68fa51194c583177a4b0818c4a18e73b1fa1d5d7597b52"
+      }
+    }
+  },
+  "memory_stress_check": {
+    "stress_check": "passed",
+    "horizon": 4,
+    "peak_gb": 25.16733952
+  },
+  "completion": {
+    "step": 128,
+    "invocation_seconds": 50.76217428299999,
+    "total_seconds": 50.762174916000006,
+    "stopped_by_time": false,
+    "best_score": 0.07724243456808229,
+    "world_size": 5,
+    "steady_step_seconds": 0.05876836413000028
+  },
+  "rank_weight_checks_passed": true,
+  "weights_reused_for_full_training": false
+}

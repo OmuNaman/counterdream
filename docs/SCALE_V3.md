@@ -1,6 +1,13 @@
 # Five-GPU CS:GO experiment
 
-Status: **full training is blocked by a disabled Modal workspace**. Five H100s
+Status: **a new authorized workspace passed the five-H100 training check; the
+full corpus is transferring there**. The check completed 128 optimizer steps in
+50.76 seconds, with a four-frame memory check peaking at 25.17 GB and identical
+model weights across all ranks. Its weights are not reused for full training.
+See [the test report](reports/v3-workspace-check.json) and
+[workspace migration details](WORKSPACE_TRANSFER.md).
+
+The first full allocation was interrupted in the original workspace. Five H100s
 started loading the completed corpus on 2026-09-09 at 08:18 UTC, then Modal stopped
 the workers at 08:35 UTC. The API reported `workspace is disabled` without an
 account-level reason. The app is confirmed stopped with zero tasks.
@@ -13,8 +20,9 @@ Its original absolute allocation deadline was 13:48 UTC; no automatic replacemen
 allocation has been started. The approximately 17-minute allocation represents
 about **$6.08 in estimated base GPU/CPU/RAM usage**, not verified billed spend or
 total project cost. See [the interruption report](reports/v3-interruption.json).
-Restore access to the existing Modal workspace before continuing; retain the
-prepared volume and review the allocation marker and remaining budget first.
+The original prepared volume and allocation marker are retained. The user has
+authorized a different active workspace and confirmed at least $130 of remaining
+spend allowance there. Both attempts remain within the original project budget.
 
 The user chose training from random initialization, with no DIAMOND or other
 pretrained weights. v0.1.0 remains available unchanged as the original release.
