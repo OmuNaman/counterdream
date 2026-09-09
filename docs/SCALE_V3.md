@@ -4,18 +4,20 @@ Status: **full five-H100 training is running in the new authorized workspace**.
 It started on 2026-09-09 at 09:38:37 UTC from clean commit
 `b8240b2ccfd1b139b46a3da100b69ed1832c2693`, with an absolute allocation deadline
 of 15:08:37 UTC. All five ranks loaded their data and the run has passed
-30,000 of 60,000 planned optimizer steps. Peak memory reported by rank zero
+50,000 of 60,000 planned optimizer steps. Peak memory reported by rank zero
 is 67.74 GB, with roughly 0.225 seconds per training step. These are observed
 training measurements, not a claim of playable quality.
 
-Validation previews at 2,000, 10,000, 20,000, and 30,000 steps show recognizable scenes,
+Validation previews through 50,000 steps show recognizable scenes,
 weapons, and responses to controls. Turning still blurs and longer generated
 sequences drift or lose scene structure. Eight denoising passes retain more
 texture in some sequences than four, but can increase pixel error and nearly
 double inference time. Both settings remain candidates for later visual review;
 lower pixel error alone does not establish better gameplay. The final test split
-has not been evaluated. The halfway preview does not establish a clear
-improvement in sustained playability over the 20,000-step preview.
+has not been evaluated. The 50,000-step preview does not establish a clear
+improvement in sustained playability over the earlier previews. Inspected
+sequences still lose objects, change weapon appearance, and drift into
+inconsistent views after the initial frames.
 
 The following eight-pass evaluations use the same 256 one-step validation
 windows and six 128-frame generated sequences. They differ from the smaller
@@ -27,11 +29,20 @@ images; smaller values need not mean sharper images or more consistent gameplay.
 | [10,000](reports/v3-validation-step-10000-8.json) | 0.01274 | 0.06593 | 45.8 ms |
 | [20,000](reports/v3-validation-step-20000-8.json) | 0.01209 | 0.06747 | 46.2 ms |
 | [30,000](reports/v3-validation-step-30000-8.json) | 0.01436 | 0.06663 | 56.3 ms |
+| [50,000](reports/v3-validation-step-50000-8.json) | 0.01531 | 0.06374 | 46.0 ms |
 
 Generation times are measurements from individual cloud GPU sessions, excluding
 network delivery. Reports include checkpoint hashes, sampling settings, dataset
 counts, and evaluation-source hashes. No checkpoint has been selected for a v3
 release yet.
+
+At 50,000 steps, next-frame error is higher than at 30,000 while frame-128
+error is slightly lower. The images remain unstable, so this mixed numerical
+change is not evidence of better sustained gameplay. The following control
+comparison shows generated frame 16 for left, right, forward, jump, and idle,
+starting from identical recorded frames and using identical sampling noise.
+
+![50,000-step model: matched left, right, forward, jump, and idle controls](reports/v3-validation-step-50000-controls.png)
 
 The workspace passed its training check and complete corpus transfer.
 All 5,688 recordings transferred (241,422,928,128
