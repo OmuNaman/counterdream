@@ -8,6 +8,7 @@ from counterdream.cloud_config import gpu_base_image,volume,PILOT,RUN,DATA
 from counterdream.live_checkpoint import snapshot_folder
 
 app=modal.App("counterdream-stream")
+GPU_TYPE="A100"
 image=gpu_base_image.pip_install("websockets==15.0.1").add_local_python_source("counterdream")
 
 
@@ -31,12 +32,13 @@ def artifact_folder(variant,snapshot=""):
     raise ValueError("Choose latest, full or pilot")
 
 
-@app.function(image=image,gpu="H100",cpu=4,memory=16384,
+@app.function(image=image,gpu=GPU_TYPE,cpu=4,memory=16384,
               timeout=1900,retries=0,
               max_containers=1,scaledown_window=2,volumes={"/artifacts":volume})
 def stream_server(queue,token:str,variant:str="full",snapshot:str="",deadline_unix:float=0.,launch_id:str=""):
     import os
     import time
+    import torch
     import uvicorn
     from counterdream.remote_runtime import SessionEngine
     from counterdream.streaming import make_gpu_stream
@@ -74,7 +76,8 @@ def stream_server(queue,token:str,variant:str="full",snapshot:str="",deadline_un
             await queue.put.aio(dict(url=tunnel.url,region=os.getenv("MODAL_REGION","unknown"),
                                     checkpoint_step=engine.checkpoint["step"],launch_id=launch_id))
             print(json.dumps(dict(event="stream_ready",checkpoint_step=engine.checkpoint["step"],
-                                  region=os.getenv("MODAL_REGION","unknown"),deadline_unix=deadline)),flush=True)
+                                  region=os.getenv("MODAL_REGION","unknown"),gpu=torch.cuda.get_device_name(),
+                                  deadline_unix=deadline)),flush=True)
             while time.time()<deadline and time.monotonic()-activity["last"]<90:
                 if task.done():
                     break
@@ -105,7 +108,7 @@ def probe():
 
 
 @app.local_entrypoint()
-def play(variant: str = "full"):
+def play(variant: str = "full", snapshot_id: str = ""):
     import secrets
     import time
     import uuid
@@ -113,10 +116,16 @@ def play(variant: str = "full"):
     from counterdream.streaming import make_stream_proxy
     from counterdream.stream_lease import StreamLease
     # Read-only metadata without allocating an inference GPU yet.
-    snapshot=uuid.uuid4().hex if variant=="latest" else ""
+    if snapshot_id and variant!="latest":
+        raise ValueError("A pinned snapshot requires the latest variant")
+    snapshot=(snapshot_id or uuid.uuid4().hex) if variant=="latest" else ""
     folder=artifact_folder(variant,snapshot)
     if variant=="latest":
-        report=prepare_latest.remote(snapshot)
+        if snapshot_id:
+            volume_folder=folder.relative_to("/artifacts").as_posix()
+            report=json.loads(b"".join(volume.read_file(volume_folder+"/preview.json")))
+        else:
+            report=prepare_latest.remote(snapshot)
         names=report["spawns"]
         print(json.dumps(dict(event="live_snapshot",**report)),flush=True)
     else:
@@ -126,11 +135,11 @@ def play(variant: str = "full"):
         import numpy as np
         with np.load(io.BytesIO(b"".join(volume.read_file(volume_folder+"/seeds.npz"))),allow_pickle=False) as seeds:
             names=seeds["names"].tolist()
-    metadata=dict(model="CounterDream v3 / Dust II",device="Cloud H100"+(" · training preview" if variant=="latest" else " · pilot" if variant=="pilot" else ""),spawns=names,
+    metadata=dict(model="CounterDream v3 / Dust II",device=f"Cloud {GPU_TYPE}"+(" · training preview" if variant=="latest" else " · pilot" if variant=="pilot" else ""),spawns=names,
                   checkpoint_step=report["checkpoint_step"],context_frames=report["config"]["context"],
                   resolution=[report["config"]["width"],report["config"]["height"]],pretrained_weights=False,
                   recommended_steps=8 if variant=="latest" else 4,
-                  session_note="Separate H100 · pauses when unfocused · GPU stops after 90 seconds idle · 30-minute allocation window")
+                  session_note=f"Separate {GPU_TYPE} · pauses when unfocused · GPU stops after 90 seconds idle · 30-minute allocation window")
     token=secrets.token_urlsafe(32)
     with modal.Queue.ephemeral() as queue:
         async def start(remaining):

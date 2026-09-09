@@ -190,8 +190,10 @@ This exports a frozen EMA copy of `latest.pt` on a CPU worker, verifies its hash
 and prepares six starting views from validation only. It leaves training running
 and does not evaluate the test split. The page shows the pinned training step;
 new training saves do not change an active viewer. Open `http://127.0.0.1:7860/`
-and choose Connect & Play to start a separate H100. This preview defaults to eight
+and choose Connect & Play to start a separate A100. This preview defaults to eight
 sampling passes, with four available for faster inference.
+To reuse an already prepared snapshot, also pass `--snapshot-id` with the
+32-character identifier printed when that snapshot was prepared.
 
 Preparation is resumable per source episode. Complete the corpus before full
 training. A deliberately small prepared subset can be used for the short
@@ -205,10 +207,11 @@ The benchmark is saved separately in `runs/dust2-v3`. The full-corpus model
 starts freshly from random weights in `runs/dust2-v3-full`; pilot weights
 are not reused as a substitute for training on the complete corpus.
 
-Inference runs on one cloud H100 using available placement (approximately
-$4.27/hour including CPU/RAM at the listed base rates). A nearby India/Singapore
-request queued for capacity during the live preview, so the default no longer
-restricts the region. The earlier pilot measurements below used nearby placement.
+Inference runs on one cloud A100 (40 GB) using available placement, approximately
+$2.42/hour including four CPU cores and 16 GiB RAM at
+[Modal's listed rates](https://modal.com/pricing). The live viewer was
+switched to A100 at the user's request after H100 allocation requests queued.
+The earlier pilot measurements below used an H100 with nearby placement.
 Training also uses base-price placement. The browser connects to a local
 loopback proxy; only control messages and PNG frames cross the cloud link.
 The rolling visual history stays on the GPU, and Modal credentials remain in
