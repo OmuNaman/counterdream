@@ -76,9 +76,8 @@
               <option value="4">4 steps · faster</option>
               <option value="16">16 steps · slower</option>
             </select>
-            <p class="small">
-              112 × 64 model output, enlarged for viewing. GPU compute runs only
-              when frames are requested.
+            <p class="small" id="resolution-copy">
+              Model output is enlarged for viewing.
             </p>
           </div>
           <div class="panel controls">
@@ -97,7 +96,7 @@
             <span class="dot"></span>
             <div>
               <strong>Model-only rollout</strong>
-              <p>
+              <p id="seed-copy">
                 No game engine is running behind the viewer. Reset loads four
                 seed frames; subsequent frames are generated.
               </p>

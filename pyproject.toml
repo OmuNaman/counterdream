@@ -19,4 +19,4 @@ reports = ["matplotlib>=3.9"]
 include = ["counterdream*"]
 
 [tool.setuptools.package-data]
-counterdream = ["static/*", "release.json"]
+counterdream = ["static/*", "assets/*", "release.json"]

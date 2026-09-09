@@ -70,6 +70,7 @@ def make_app(seed_path, predict, metadata=None, max_generated_frames=2000):
             "model": "CounterDream / Dust II",
             "spawns": names,
             "resolution": [112, 64],
+            "context_frames": 4,
             "budget_frames": max_generated_frames,
             "generated_frames": state["generated"],
             **(metadata or {}),
