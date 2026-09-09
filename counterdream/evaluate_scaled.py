@@ -89,7 +89,10 @@ def evaluate(checkpoint, data, output, split="val", steps=4, clips=6, horizon=12
             current = np.stack([a if name!="JUMP" or t%16==0 else encode() for name,a in branches])
             history = torch.cat((histories,torch.from_numpy(current).to("cuda")[:,None]),1)
             with torch.autocast("cuda", dtype=torch.bfloat16):
-                predicted = model.sample(contexts, history, steps=steps, seed=9900+t)
+                # Reuse identical noise for each control branch; only actions differ.
+                predicted = torch.cat([model.sample(contexts[i:i+1],history[i:i+1],
+                                                    steps=steps,seed=9900+t)
+                                       for i in range(len(branches))])
             row = panel([uint8(x) for x in predicted],[x[0] for x in branches],scale=2)
             writer.append_data(row)
             if t==15:
@@ -98,6 +101,8 @@ def evaluate(checkpoint, data, output, split="val", steps=4, clips=6, horizon=12
             histories = history[:,1:]
     torch.save({k: checkpoint_data[k] for k in ("config","ema","step","run")},out / "model.pt")
     report["export_sha256"] = hashlib.sha256((out / "model.pt").read_bytes()).hexdigest()
+    report["control_comparison"] = dict(shared_start=True,shared_noise=True,frames=64,
+                                        controls=[name for name,_ in branches])
     write_json(out / "evaluation.json",report)
     print(json.dumps(report),flush=True)
     return report
