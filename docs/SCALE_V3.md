@@ -1,6 +1,7 @@
 # Five-GPU CS:GO experiment
 
-Status: implementation and short benchmark in progress. No improved playable
+Status: short five-GPU benchmark completed; full data preparation and streaming
+verification in progress. No improved playable
 quality is claimed until generated rollouts have been evaluated.
 
 The user chose training from random initialization, with no DIAMOND or other
@@ -66,10 +67,11 @@ early checkpointing. It has no application-level automatic retries and records
 a persistent marker preventing an accidental second full allocation. Modal can
 restart preempted functions even with retries disabled: the same training input
 can resume its checkpoint only within its original absolute allocation deadline.
-The deadline does not restart with the container. Eight CPU workers can
+The deadline does not restart with the container. Sixteen CPU workers can
 prepare data concurrently; each call is limited to 3,600 seconds. The initial
 28-shard invocation has roughly a $3.54 CPU/RAM bound before platform preemptions
-or explicit resumptions; each expert-data invocation adds at most about $0.13.
+or explicit resumptions; eight expert-data partitions add at most about $1.01
+per invocation before retries.
 
 These are application limits, not a Modal account spending cap. Existing project
 spend was estimated below $15, not reconciled against an invoice. Reserve room
@@ -88,7 +90,7 @@ modal run cloud_scale.py::train --batch 12 --seconds 19800
 modal run cloud_scale.py::assess --split val --steps 4
 modal run cloud_scale.py::assess --split test --steps 4
 modal run cloud_scale.py::fetch --weights
-modal run cloud_scale.py::play
+modal run cloud_stream.py::play
 ```
 
 Preparation is resumable per source episode. Complete the corpus before full
@@ -98,17 +100,49 @@ The benchmark is saved separately in `runs/dust2-v3`. The full-corpus model
 starts freshly from random weights in `runs/dust2-v3-full`; pilot weights
 are not reused as a substitute for training on the complete corpus.
 
-Inference runs on one private cloud H100 near India or Singapore, with traffic
-routed through Mumbai. Modal's narrow-region selection adds a 1.75× multiplier
+Inference runs on one cloud H100 near India or Singapore. Modal's narrow-region selection adds a 1.75× multiplier
 to this inference allocation (approximately $7.47/hour including CPU/RAM).
 Training uses base-price placement. The browser connects to a local
 loopback proxy; only control messages and PNG frames cross the cloud link.
 The rolling visual history stays on the GPU, and Modal credentials remain in
-the local Python process. There is no public GPU endpoint. Idle containers
-scale down after 15 seconds, which can require resetting an expired session.
-Network round-trip time adds to model latency. The viewer has a 12,000-frame
-budget and 15-minute connection limit; the GPU process has a 20,000-frame
-and 45-minute allocation limit. Closing the local app stops its Modal app.
+the local Python process. A direct TLS WebSocket tunnel uses a fresh strong
+Bearer token held only by the two server processes. Its address is publicly
+reachable, but unauthenticated connections are rejected. It serves one client
+on one explicitly started GPU; it cannot autoscale into additional allocations.
+Controls and frames flow independently, with a target of 16 generated frames
+per second. Missing control heartbeats stop generation after half a second.
+Network latency still delays control response, even when frames arrive smoothly.
+The viewer has a 12,000-frame budget and 15-minute connection limit. The cloud
+function shuts down after 90 idle seconds or 30 active minutes, with a 1,900-second
+hard timeout. Restarting the local viewer explicitly allocates another session.
+Closing the local app cancels its GPU call. The older per-frame RPC viewer in
+`cloud_scale.py` is retained for comparison, not the recommended play command.
+
+## Pilot measurements
+
+The five-H100 pilot completed 3,200 optimizer steps in 467 seconds on a tiny
+2,000-frame training subset. A three-frame training unroll took about 0.175
+seconds per step; a separate four-frame memory check peaked at 25.2 GB per GPU
+before loading the large corpus. A subsequent disjoint GPU-data test verified
+identical model weights across ranks and approximately 30.3 GB peak usage with
+5.1 GB of data per GPU. These checks establish that the pipeline works, not
+that the full model has learned playable dynamics.
+
+The pilot's four-step sampler took about 23 ms per generated frame on an H100.
+Per-frame cloud RPC took approximately 230 ms end to end, motivating the direct
+continuous stream. A 96-frame direct-stream probe delivered 15.95 fps. A second
+96-frame check through the local viewer proxy delivered 15.88 fps, with 131 ms
+median control response and 380 ms p95. GPU inference was 24.7 ms median. These
+short network samples are specific to this computer and cloud placement, not
+a latency guarantee. Reports are in `docs/reports/v3-pilot/network-*.json`.
+Pause, resume, reset, starting-view selection, and frame display were also
+checked in the browser. Reproduce the local stream benchmark with
+`python -m counterdream.benchmark_stream` while the viewer is running and no
+browser client is connected.
+
+Main training
+is planned for roughly 4–6 hours including overhead, bounded as above; final
+runtime and quality remain to be measured on the full corpus.
 
 ## Attribution
 

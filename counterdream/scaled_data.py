@@ -157,6 +157,8 @@ def build_index(root, allow_partial=False):
     records, manifests = [], []
     for path in sorted(root.glob("*/manifest.json")):
         manifest = json.loads(path.read_text())
+        if manifest.get("superseded_by"):
+            continue
         if not manifest["complete"] and not allow_partial:
             raise ValueError(f"Shard is incomplete: {path.parent.name}")
         manifests.append(dict(shard=manifest["shard"], complete=manifest["complete"],
@@ -269,14 +271,16 @@ class GPUShardReplay(DiskReplay):
         return self.frames_gpu[ids].float()/127.5-1,self.actions_gpu[ids[:,:-1]]
 
 
-def prepare_expert(root,commit=None,max_seconds=3300):
+def prepare_expert(root,commit=None,max_seconds=3300,part=0,parts=1):
     shard = "dataset_dm_expert_dust2.zip"
     size = 24274109780
-    root = Path(root)/"expert-dust2"
+    if not 0 <= part < parts <= 8:
+        raise ValueError("Expert partition must be within 1–8 parts")
+    root = Path(root)/("expert-dust2" if parts==1 else f"expert-dust2-part-{part}")
     root.mkdir(parents=True,exist_ok=True)
     manifest = root/"manifest.json"
     spec = dict(dataset=DATASET,revision=REVISION,shard=shard,height=HEIGHT,width=WIDTH,
-                format="npy-rgb-uint8",expert=True,
+                format="npy-rgb-uint8",expert=True,part=part,parts=parts,
                 source_archive_sha256="49bc679d4a7a6c0a80fb35f6c3b09a9dd6161bac87ac5aa2732aec41dcabd19f")
     records = []
     if manifest.exists():
@@ -294,7 +298,7 @@ def prepare_expert(root,commit=None,max_seconds=3300):
             members = [x for x in archive.infolist() if x.filename.endswith(".hdf5")]
             if len(members)!=190:
                 raise ValueError("Expected 190 expert source files")
-            for member in members:
+            for member in members[part::parts]:
                 if member.filename in done:
                     continue
                 if time.monotonic()-started > max_seconds:

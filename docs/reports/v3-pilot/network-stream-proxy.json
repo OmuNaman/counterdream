@@ -1,0 +1,9 @@
+{
+  "frames": 96,
+  "frame_ms_median": 60.55409996770322,
+  "delivered_fps": 15.875443388096667,
+  "control_response_ms_median": 130.88985002832487,
+  "control_response_ms_p95": 380.04299998283386,
+  "gpu_ms_median": 24.7,
+  "transport": "local proxy and authenticated cloud TLS websocket"
+}

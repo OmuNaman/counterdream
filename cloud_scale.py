@@ -3,22 +3,14 @@ import json
 from pathlib import Path
 import modal
 
-VOLUME_NAME = "counterdream-artifacts-v1"
+from counterdream.cloud_config import VOLUME_NAME,DATA,PILOT,RUN,volume,gpu_base_image
 
 app = modal.App("counterdream-scale-v3")
-volume = modal.Volume.from_name("counterdream-artifacts-v1")
-DATA = "/artifacts/data-v3"
-PILOT = "/artifacts/runs/dust2-v3"
-RUN = "/artifacts/runs/dust2-v3-full"
 data_image = (modal.Image.debian_slim(python_version="3.11")
               .pip_install("numpy==1.26.4", "Pillow==11.1.0", "h5py==3.12.1", "requests==2.32.3")
               .add_local_python_source("counterdream")
               .add_local_file("counterdream/assets/diamond-test-split.txt", "/root/diamond-test-split.txt"))
-gpu_image = (modal.Image.debian_slim(python_version="3.11")
-             .pip_install("torch==2.6.0", "numpy==1.26.4", "Pillow==11.1.0",
-                          "h5py==3.12.1", "requests==2.32.3", "imageio==2.37.0",
-                          "imageio-ffmpeg==0.6.0", "fastapi==0.115.8", "uvicorn==0.34.0")
-             .add_local_python_source("counterdream"))
+gpu_image = gpu_base_image.add_local_python_source("counterdream")
 
 
 def _launch(seconds, batch, source, resume, output, gpu_replay=False, target_steps=60000):
@@ -78,8 +70,11 @@ def train_five(source: dict, batch: int = 12, seconds: int = 19800):
     if not 600 <= seconds <= 19800 or not 1 <= batch <= 24:
         raise ValueError("Full run is capped at 5.5 training hours")
     index = json.loads(Path(DATA, "index.json").read_text())
-    if index["counts"]["train"] < 1_000_000:
-        raise ValueError("Prepare at least one million training frames first")
+    main_shards=[s for s in index["shards"] if s["shard"].endswith(".tar")]
+    expert_shards=[s for s in index["shards"] if s["shard"]=="dataset_dm_expert_dust2.zip"]
+    if (index["partial"] or len(main_shards)!=28 or len(expert_shards)!=8
+            or index["counts"]["train"]<4_000_000):
+        raise ValueError("Complete all 28 main archives and eight expert partitions before full training")
     # Platform preemption can restart the same input even with retries=0.
     # Its stable allocation ID may resume, but the wall-clock deadline never resets.
     marker = Path(RUN, "full-allocation.json")
@@ -242,7 +237,7 @@ def fetch(destination: str = "artifacts/dust2-v3", weights: bool = False):
 
 
 @app.function(image=data_image, cpu=2, memory=4096, timeout=3600, retries=0,
-              max_containers=8, scaledown_window=2, volumes={"/artifacts": volume})
+              max_containers=16, scaledown_window=2, volumes={"/artifacts": volume})
 def prepare_part(shard: str, limit: int = 0):
     from counterdream.scaled_data import prepare_shard
     test_names = set(Path("/root/diamond-test-split.txt").read_text().splitlines())
@@ -260,21 +255,58 @@ def index_data(partial: bool = False):
 
 
 @app.function(image=data_image,cpu=2,memory=4096,timeout=3600,retries=0,
-              max_containers=1,scaledown_window=2,volumes={"/artifacts":volume})
-def prepare_expert_data():
+              max_containers=8,scaledown_window=2,volumes={"/artifacts":volume})
+def prepare_expert_data(part: int = 0):
     from counterdream.scaled_data import prepare_expert
-    result = prepare_expert(DATA,commit=volume.commit)
-    return dict(episodes=len(result["episodes"]),complete=result["complete"])
+    result = prepare_expert(DATA,commit=volume.commit,part=part,parts=8)
+    return dict(part=part,episodes=len(result["episodes"]),complete=result["complete"])
 
 
 @app.local_entrypoint()
 def expert():
-    print(json.dumps(prepare_expert_data.remote()),flush=True)
+    print(json.dumps(list(prepare_expert_data.map(range(8)))),flush=True)
+
+
+@app.function(image=data_image,cpu=1,memory=1024,timeout=120,retries=0,
+              volumes={"/artifacts":volume})
+def retire_expert_pilot():
+    from counterdream.scaled_data import write_json
+    path = Path(DATA,"expert-dust2/manifest.json")
+    if path.exists():
+        state = json.loads(path.read_text())
+        state["superseded_by"] = "Eight independently prepared expert-dust2-part-* shards"
+        write_json(path,state)
+        volume.commit()
+        return dict(retired_pilot_episodes=len(state["episodes"]))
+    return dict(retired_pilot_episodes=0)
+
+
+@app.local_entrypoint()
+def partition_expert():
+    print(json.dumps(retire_expert_pilot.remote()),flush=True)
+    print(json.dumps(list(prepare_expert_data.map(range(8)))),flush=True)
 
 
 @app.local_entrypoint()
 def index(partial: bool = False):
     print(json.dumps(index_data.remote(partial)),flush=True)
+
+
+@app.function(image=data_image,cpu=1,memory=1024,timeout=120,retries=0,volumes={"/artifacts":volume})
+def data_progress():
+    records=[]
+    for path in sorted(Path(DATA).glob("*/manifest.json")):
+        value=json.loads(path.read_text())
+        if value.get("superseded_by"):
+            continue
+        records.append(dict(shard=path.parent.name,complete=value["complete"],episodes=len(value["episodes"])))
+    return dict(shards=records,total_prepared_episodes=sum(r["episodes"] for r in records),
+                complete_shards=sum(r["complete"] for r in records))
+
+
+@app.local_entrypoint()
+def progress():
+    print(json.dumps(data_progress.remote()),flush=True)
 
 
 @app.local_entrypoint()
@@ -290,6 +322,11 @@ def prepare(shards: int = 28, limit: int = 0):
         r'hdf5_dm_july2021_\d+_to_\d+\.tar', x['path'])],
         key=lambda x: int(x['path'].split('_')[3]))[:shards]
     print(json.dumps(dict(archives=len(selected), source_bytes=sum(x["size"] for x in selected))), flush=True)
-    results = list(prepare_part.starmap([(x["path"], limit) for x in selected]))
-    print(json.dumps(results), flush=True)
+    results = list(prepare_part.starmap([(x["path"], limit) for x in selected],return_exceptions=True))
+    failures = [dict(shard=entry["path"],error=type(result).__name__)
+                for entry,result in zip(selected,results) if isinstance(result,Exception)]
+    print(json.dumps([x for x in results if not isinstance(x,Exception)]), flush=True)
+    if failures:
+        print(json.dumps(dict(failed_shards=failures)),flush=True)
+        raise RuntimeError("Some shards need resumption; other completed shards are preserved")
     print(json.dumps(index_data.remote(partial=any(not x["complete"] for x in results))), flush=True)

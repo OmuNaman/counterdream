@@ -10,6 +10,9 @@ let ws = null,
   fire = false,
   drag = false,
   lastRequest = 0,
+  streaming = false,
+  streamReady = false,
+  lastFrameAt = 0,
   timer = null;
 const keys = new Set();
 const keyMap = {
@@ -42,11 +45,18 @@ function pause() {
   playing = false;
   clearControls();
   clearTimeout(timer);
+  lastFrameAt = 0;
+  if (streaming && ws?.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify({ type: "pause" }));
   $("pause").textContent = "RESUME";
   status("PAUSED");
 }
 function request() {
-  if (!playing || busy || ws?.readyState !== WebSocket.OPEN) return;
+  if (!playing || (streaming ? !streamReady : busy) || ws?.readyState !== WebSocket.OPEN) return;
+  if (ws.bufferedAmount > 4096) {
+    if (streaming) timer = setTimeout(request, 62.5);
+    return;
+  }
   const mx =
     (keys.has("ArrowLeft") ? -60 : 0) + (keys.has("ArrowRight") ? 60 : 0) + dx;
   const my =
@@ -62,10 +72,12 @@ function request() {
     }),
   );
   dx = dy = 0;
-  busy = true;
+  busy = !streaming;
   lastRequest = performance.now();
+  if (streaming) timer = setTimeout(request, 62.5);
 }
 function resume() {
+  clearTimeout(timer);
   playing = true;
   $("pause").textContent = "PAUSE";
   $("overlay").classList.add("hidden");
@@ -73,7 +85,7 @@ function resume() {
   $("viewport").focus();
   request();
 }
-function connect() {
+async function connect() {
   if (ws?.readyState === WebSocket.CONNECTING) return;
   if (ws?.readyState === WebSocket.OPEN) {
     resume();
@@ -82,6 +94,8 @@ function connect() {
   $("start").disabled = true;
   $("start").textContent = "CONNECTING…";
   status("CONNECTING");
+  await loadInfo();
+  streamReady = false;
   ws = new WebSocket(
     `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws?spawn=${encodeURIComponent($("spawn").value)}`,
   );
@@ -97,7 +111,7 @@ function connect() {
     frame = 0;
     $("frame").textContent = "0000";
     $("overlay").classList.add("hidden");
-    status("IMAGINING", true);
+    status(streaming ? "STARTING CLOUD GPU…" : "IMAGINING", true);
     $("viewport").focus();
   };
   ws.onmessage = async (event) => {
@@ -128,7 +142,18 @@ function connect() {
     ctx.drawImage(bitmap, 0, 0);
     bitmap.close();
     busy = false;
-    if (playing)
+    if (streaming) {
+      const now = performance.now();
+      if (lastFrameAt) $("latency").textContent = `${Math.round(now - lastFrameAt)} ms / frame`;
+      lastFrameAt = now;
+      if (!streamReady) {
+        streamReady = true;
+        if (playing) {
+          status("IMAGINING", true);
+          request();
+        }
+      }
+    } else if (playing)
       timer = setTimeout(
         request,
         Math.max(0, 62.5 - (performance.now() - lastRequest)),
@@ -140,6 +165,8 @@ function connect() {
   ws.onclose = () => {
     pause();
     busy = false;
+    streamReady = false;
+    lastFrameAt = 0;
     ws = null;
     $("start").disabled = false;
     $("start").textContent = "RECONNECT ↗";
@@ -210,6 +237,9 @@ function loadInfo() {
   return fetch("/api/info")
   .then((r) => r.json())
   .then((info) => {
+    streaming = Boolean(info.streaming);
+    if (info.recommended_steps && !playing)
+      $("quality").value = String(info.recommended_steps);
     $("spawn").replaceChildren(
       ...info.spawns.map((name, i) =>
         Object.assign(document.createElement("option"), {
