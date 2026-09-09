@@ -4,9 +4,10 @@
 
 **A small CS:GO world model, trained from scratch. Play inside its predictions.**
 
-The [five-H100 scale experiment](docs/SCALE_V3.md) is in progress on this branch.
-It adds a larger model, the full Dust II corpus, and private cloud inference.
-The released results below describe v0.1.0; improved v3 quality is not yet established.
+The [five-H100 scale experiment](docs/SCALE_V3.md) has prepared 5.688 million frames
+and verified cloud streaming. Modal disabled the workspace during the full run's
+data loading; optimization had not started and the run is stopped. The released
+results below describe v0.1.0; improved v3 quality is not yet established.
 
 CounterDream learns recent frames + keyboard/mouse actions → next frame from Dust II
 gameplay. The viewer starts with four recorded seed frames. Every subsequent frame

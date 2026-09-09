@@ -1,10 +1,20 @@
 # Five-GPU CS:GO experiment
 
-Status: five-GPU benchmark, full data preparation, and cloud streaming checks
-completed. Full training started on 2026-09-09 at 08:18 UTC from clean commit
-`fd5813cb6c1055922cde2c554c5db46ebef6a24b`, with an absolute allocation deadline
-of 13:48 UTC. Improved playable quality is not established until generated
-rollouts have been evaluated.
+Status: **full training is blocked by a disabled Modal workspace**. Five H100s
+started loading the completed corpus on 2026-09-09 at 08:18 UTC, then Modal stopped
+the workers at 08:35 UTC. The API reported `workspace is disabled` without an
+account-level reason. The app is confirmed stopped with zero tasks.
+Optimization had not started, and this allocation produced no new trained
+checkpoint. The short pilot, full dataset preparation, and streaming checks are
+complete; improved full-model gameplay quality remains untested.
+
+The interrupted run used clean commit `fd5813cb6c1055922cde2c554c5db46ebef6a24b`.
+Its original absolute allocation deadline was 13:48 UTC; no automatic replacement
+allocation has been started. The approximately 17-minute allocation represents
+about **$6.08 in estimated base GPU/CPU/RAM usage**, not verified billed spend or
+total project cost. See [the interruption report](reports/v3-interruption.json).
+Restore access to the existing Modal workspace before continuing; retain the
+prepared volume and review the allocation marker and remaining budget first.
 
 The user chose training from random initialization, with no DIAMOND or other
 pretrained weights. v0.1.0 remains available unchanged as the original release.
