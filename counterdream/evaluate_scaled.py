@@ -79,7 +79,7 @@ def evaluate(checkpoint, data, output, split="val", steps=4, clips=6, horizon=12
     report["inference_ms_median"] = float(np.median(durations)*1000)
     report["inference_ms_p95"] = float(np.percentile(durations,95)*1000)
     # Scripted controls provide inspectable examples, not a claim of correct physics.
-    branches = [("LEFT", encode(dx=-30)), ("RIGHT", encode(dx=30)),
+    branches = [("LEFT", encode(dx=-60)), ("RIGHT", encode(dx=60)),
                 ("FORWARD", encode(keys=["w"])), ("JUMP", encode(keys=["space"])),
                 ("IDLE", encode())]
     contexts = torch.from_numpy(np.repeat(np.array(seeds[:1]),len(branches),axis=0)).to("cuda").permute(0,1,4,2,3).float()/127.5-1
@@ -101,7 +101,7 @@ def evaluate(checkpoint, data, output, split="val", steps=4, clips=6, horizon=12
             histories = history[:,1:]
     torch.save({k: checkpoint_data[k] for k in ("config","ema","step","run")},out / "model.pt")
     report["export_sha256"] = hashlib.sha256((out / "model.pt").read_bytes()).hexdigest()
-    report["control_comparison"] = dict(shared_start=True,shared_noise=True,frames=64,
+    report["control_comparison"] = dict(shared_start=True,shared_noise=True,frames=64,keyboard_turn_delta=60,
                                         controls=[name for name,_ in branches])
     write_json(out / "evaluation.json",report)
     print(json.dumps(report),flush=True)
