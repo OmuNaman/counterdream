@@ -1,0 +1,20 @@
+{
+  "frames": 96,
+  "sampling_steps": 4,
+  "frame_ms_median": 25.671200011856854,
+  "delivered_fps": 14.104119691936042,
+  "first_control_response_ms": 723.1856000144035,
+  "control_response_ms_median": 2793.8298499793746,
+  "control_response_ms_p95": 3190.7137000234798,
+  "gpu_ms_median": 56.5,
+  "transport": "local proxy and authenticated cloud TLS websocket",
+  "gpu": "NVIDIA A100-SXM4-40GB",
+  "region": "europe-west4",
+  "checkpoint_step": 36000,
+  "checkpoint_sha256": "e25f8301e3dd119432eda3675fdaf4ac492cd243f342c729710fb26560a37d10",
+  "export_sha256": "73813465f6fd7ecdecf68973bc13902d685bcdba5ec8d7eb566bca36795e03e3",
+  "viewer_source_commit": "ee63ff660995c76c0946480d4c105f02967e1d68",
+  "split": "val",
+  "purpose": "interactive training preview; not final release evaluation",
+  "measured_date_utc": "2026-09-09"
+}

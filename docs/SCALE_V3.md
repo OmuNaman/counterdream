@@ -254,6 +254,18 @@ checked in the browser. Reproduce the local stream benchmark with
 `python -m counterdream.benchmark_stream` while the viewer is running and no
 browser client is connected.
 
+## Live A100 preview
+
+The pinned 36,000-step training preview was also streamed from an A10040GB in
+`europe-west4` using four sampling passes. A 96-frame check through the local
+proxy delivered 14.10 fps, with 56.5 ms median GPU inference. Control response was
+much slower: 2.79 seconds median and 3.19 seconds p95. This is a functioning
+preview, with substantial input delay; it does not establish smooth gameplay.
+The [measured report](reports/v3-live-step-36000-a100-4.json) records checkpoint
+and export hashes. Browser connection, generated frames, pause, reset, and
+preserving the chosen sampler across connection were checked. Training continues
+independently on five H100s, and these starting views come from validation only.
+
 Main training
 is planned for roughly 4–6 hours including overhead, bounded as above; final
 runtime and quality remain to be measured on the full corpus.
