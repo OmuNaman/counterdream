@@ -37,6 +37,7 @@ def artifact_folder(variant,snapshot=""):
               max_containers=1,scaledown_window=2,volumes={"/artifacts":volume})
 def stream_server(queue,token:str,variant:str="full",snapshot:str="",deadline_unix:float=0.,launch_id:str=""):
     import os
+    import socket
     import time
     import torch
     import uvicorn
@@ -65,9 +66,12 @@ def stream_server(queue,token:str,variant:str="full",snapshot:str="",deadline_un
     application=make_gpu_stream(engine,token,activity)
     server=uvicorn.Server(uvicorn.Config(application,host="0.0.0.0",port=8000,
                                         access_log=False,log_level="warning",ws="websockets"))
-    with modal.forward(8000) as tunnel:
+    # An owned ephemeral socket is released even if Modal cancels the input.
+    with socket.socket() as listener:
+      listener.bind(("0.0.0.0",0))
+      with modal.forward(listener.getsockname()[1]) as tunnel:
         async def run():
-            task=asyncio.create_task(server.serve())
+            task=asyncio.create_task(server.serve(sockets=[listener]))
             while not server.started:
                 if task.done():
                     await task
@@ -114,7 +118,7 @@ def play(variant: str = "full", snapshot_id: str = ""):
     import uuid
     import uvicorn
     from counterdream.streaming import make_stream_proxy
-    from counterdream.stream_lease import StreamLease
+    from counterdream.stream_lease import StreamLease,call_is_running
     # Read-only metadata without allocating an inference GPU yet.
     if snapshot_id and variant!="latest":
         raise ValueError("A pinned snapshot requires the latest variant")
@@ -160,17 +164,9 @@ def play(variant: str = "full", snapshot_id: str = ""):
             except BaseException:
                 await call.cancel.aio()
                 raise
-        async def running(call):
-            try:
-                await call.get.aio(timeout=0)
-            except modal.exception.TimeoutError:
-                return True
-            except Exception:
-                return False
-            return False
         async def cancel(call):
             await call.cancel.aio()
-        lease=StreamLease(start,running,cancel)
+        lease=StreamLease(start,call_is_running,cancel)
         async def get_remote():
             destination=await lease.get()
             return destination["url"],token

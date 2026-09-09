@@ -11,6 +11,7 @@ let ws = null,
   drag = false,
   lastRequest = 0,
   streaming = false,
+  qualityChosen = false,
   streamReady = false,
   lastFrameAt = 0,
   timer = null;
@@ -179,6 +180,7 @@ async function connect() {
   };
 }
 $("start").onclick = connect;
+$("quality").onchange = () => { qualityChosen = true; };
 $("pause").onclick = () => (playing ? pause() : resume());
 function reset() {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -238,7 +240,7 @@ function loadInfo() {
   .then((r) => r.json())
   .then((info) => {
     streaming = Boolean(info.streaming);
-    if (info.recommended_steps && !playing)
+    if (info.recommended_steps && !playing && !qualityChosen)
       $("quality").value = String(info.recommended_steps);
     $("spawn").replaceChildren(
       ...info.spawns.map((name, i) =>

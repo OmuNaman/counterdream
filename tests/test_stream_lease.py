@@ -5,6 +5,25 @@ import pytest
 from counterdream.stream_lease import AllocationEnded, StreamLease
 
 
+def test_modal_running_call_uses_builtin_timeout_and_is_not_cancelled():
+    from types import SimpleNamespace
+    from counterdream.stream_lease import call_is_running
+    async def scenario():
+        async def pending(*, timeout):
+            assert timeout == 0
+            raise TimeoutError()
+        async def unavailable(*, timeout):
+            raise ConnectionError("status temporarily unavailable")
+        async def finished(*, timeout):
+            return None
+        assert await call_is_running(SimpleNamespace(get=SimpleNamespace(aio=pending)))
+        assert not await call_is_running(SimpleNamespace(get=SimpleNamespace(aio=finished)))
+        # A failed status check must not be mistaken for a terminated worker.
+        with pytest.raises(ConnectionError):
+            await call_is_running(SimpleNamespace(get=SimpleNamespace(aio=unavailable)))
+    asyncio.run(scenario())
+
+
 def test_idle_reconnect_replaces_worker_without_extending_cost_deadline():
     async def scenario():
         now, alive, starts, cancelled = [100.], set(), [], []

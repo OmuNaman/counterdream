@@ -7,6 +7,15 @@ class AllocationEnded(RuntimeError):
     pass
 
 
+async def call_is_running(call):
+    try:
+        await call.get.aio(timeout=0)
+    except TimeoutError:
+        # Modal 1.4 raises Python's built-in TimeoutError for an unfinished call.
+        return True
+    return False
+
+
 class StreamLease:
     def __init__(self, start, running, cancel, seconds=1800, max_starts=3, clock=time.monotonic):
         self.start, self.running, self.cancel = start, running, cancel
