@@ -1,7 +1,10 @@
 # Five-GPU CS:GO experiment
 
-Status: **a new authorized workspace passed the five-H100 training check; the
-full corpus is transferring there**. The check completed 128 optimizer steps in
+Status: **a new authorized workspace passed the five-H100 training check and
+the complete corpus transfer**. All 5,688 recordings transferred (241,422,928,128
+bytes of arrays), and the rebuilt destination index matches the original SHA-256
+exactly. No source files or training weights were modified or moved.
+The check completed 128 optimizer steps in
 50.76 seconds, with a four-frame memory check peaking at 25.17 GB and identical
 model weights across all ranks. Its weights are not reused for full training.
 See [the test report](reports/v3-workspace-check.json) and

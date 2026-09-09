@@ -1,0 +1,14 @@
+{
+  "complete": true,
+  "index_sha256": "7045b9e86beec3851cbd6b214147cc0fd694c8844d90325d8195ef2323996915",
+  "episodes": 5688,
+  "frames": 5688000,
+  "counts": {
+    "train": 4956000,
+    "val": 232000,
+    "test": 500000
+  },
+  "bytes": 241422928128,
+  "source_modified": false,
+  "training_weights_transferred": false
+}

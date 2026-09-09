@@ -7,7 +7,8 @@
 The [five-H100 scale experiment](docs/SCALE_V3.md) has prepared 5.688 million frames
 and verified cloud streaming. After the original workspace hit its spend limit,
 a newly authorized workspace passed an actual five-H100 training check. The full
-dataset is transferring there. The released results below describe v0.1.0;
+dataset transfer passed an exact index comparison and is ready for training there.
+The released results below describe v0.1.0;
 improved v3 quality is not yet established.
 
 CounterDream learns recent frames + keyboard/mouse actions → next frame from Dust II

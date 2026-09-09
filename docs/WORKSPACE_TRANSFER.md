@@ -7,6 +7,12 @@ workspace and confirmed at least $130 of remaining spend allowance. A CPU-only
 compute check succeeded there, and the original workspace still permits reading
 the saved corpus. The original stopped app and allocation marker are retained.
 
+The migration completed on 2026-09-09: 5,688 recordings and 241,422,928,128 bytes
+of arrays transferred. All 12 partitions completed, file sizes were checked, and
+the rebuilt destination index exactly matches the original SHA-256
+`7045b9e86beec3851cbd6b214147cc0fd694c8844d90325d8195ef2323996915`.
+The source was not modified and no training weights were transferred.
+
 `cloud_transfer.py` copies only the prepared dataset into the destination's
 `counterdream-artifacts-v1` Volume. It verifies the pinned original index and
 source manifests, validates transferred array shapes and lengths, records array
