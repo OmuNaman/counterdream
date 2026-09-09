@@ -49,7 +49,7 @@ The short pilot uses memory-mapped episode files. Rank weight checksums are
 compared at each checkpoint, and per-rank RNG state is preserved for resume.
 Training unrolls from one to four predictions and periodically replaces a
 denoised training context with a fully sampled generated frame. The final
-checkpoint is selected by validation rollout error at 8, 16, and 32 steps,
+checkpoint is selected by validation rollout error across 16 clips at 8, 16, and 32 steps,
 rather than one-step image error alone. Human inspection of videos is also
 required: low pixel error can reward blur.
 

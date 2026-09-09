@@ -60,20 +60,22 @@ def sync(world):
 
 
 @torch.no_grad()
-def rollout_score(model, replay, device, frames=32):
+def rollout_score(model, replay, device, frames=32, clips=16):
     rng = np.random.default_rng(76543)
-    obs, acts = replay.batch_numpy(4, rng, horizon=frames, balanced=False)
-    obs = torch.from_numpy(obs).to(device).float() / 127.5 - 1
-    acts = torch.from_numpy(acts).to(device)
-    context = obs[:, :model.cfg.context]
-    losses = {}
-    with torch.autocast("cuda", dtype=torch.bfloat16):
-        for t in range(frames):
-            prediction = model.sample(context, acts[:, t:t+model.cfg.context], steps=4, seed=4000+t)
-            if t+1 in (1, 8, 16, 32):
-                losses[str(t+1)] = float(((prediction - obs[:, t+model.cfg.context])/2).square().mean())
-            context = torch.cat((context[:, 1:], prediction[:, None]), 1)
-    return losses
+    losses = {str(h):[] for h in (1,8,16,32) if h<=frames}
+    for offset in range(0,clips,4):
+        obs, acts = replay.batch_numpy(min(4,clips-offset), rng, horizon=frames, balanced=False)
+        obs = torch.from_numpy(obs).to(device).float() / 127.5 - 1
+        acts = torch.from_numpy(acts).to(device)
+        context = obs[:, :model.cfg.context]
+        with torch.autocast("cuda", dtype=torch.bfloat16):
+            for t in range(frames):
+                prediction = model.sample(context, acts[:, t:t+model.cfg.context], steps=4,
+                                          seed=4000+offset*100+t)
+                if str(t+1) in losses:
+                    losses[str(t+1)].extend(((prediction-obs[:,t+model.cfg.context])/2).square().mean((1,2,3)).tolist())
+                context = torch.cat((context[:, 1:], prediction[:, None]), 1)
+    return {h:float(np.mean(values)) for h,values in losses.items()}
 
 
 def run(args):
@@ -128,7 +130,8 @@ def run(args):
                 replay_storage="disjoint uint8 GPU shards" if args.gpu_replay else "disk mmap",
                 max_seconds=args.max_seconds, gpu=torch.cuda.get_device_name(device),
                 torch_version=str(torch.__version__), resumed_from_step=begin,
-                validation_sampler_steps=4, selection="mean rollout MSE at horizons 8,16,32",
+                validation_sampler_steps=4, validation_rollout_clips=16,
+                selection="mean rollout MSE at horizons 8,16,32 over 16 validation clips",
                 source=json.loads(Path(args.source).read_text()) if args.source else {})
     if rank == 0:
         write_json(root / f"run-from-{begin}.json", info)
