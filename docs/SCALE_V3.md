@@ -1,8 +1,10 @@
 # Five-GPU CS:GO experiment
 
 Status: five-GPU benchmark, full data preparation, and cloud streaming checks
-completed. Full training is ready to start. Improved playable quality is not
-established until generated rollouts have been evaluated.
+completed. Full training started on 2026-09-09 at 08:18 UTC from clean commit
+`fd5813cb6c1055922cde2c554c5db46ebef6a24b`, with an absolute allocation deadline
+of 13:48 UTC. Improved playable quality is not established until generated
+rollouts have been evaluated.
 
 The user chose training from random initialization, with no DIAMOND or other
 pretrained weights. v0.1.0 remains available unchanged as the original release.
