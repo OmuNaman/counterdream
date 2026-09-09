@@ -32,7 +32,7 @@ def artifact_folder(variant,snapshot=""):
 
 
 @app.function(image=image,gpu="H100",cpu=4,memory=16384,
-              region=["ap-south","ap-southeast"],timeout=1900,retries=0,
+              timeout=1900,retries=0,
               max_containers=1,scaledown_window=2,volumes={"/artifacts":volume})
 def stream_server(queue,token:str,variant:str="full",snapshot:str="",deadline_unix:float=0.,launch_id:str=""):
     import os

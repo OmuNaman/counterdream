@@ -205,9 +205,11 @@ The benchmark is saved separately in `runs/dust2-v3`. The full-corpus model
 starts freshly from random weights in `runs/dust2-v3-full`; pilot weights
 are not reused as a substitute for training on the complete corpus.
 
-Inference runs on one cloud H100 near India or Singapore. Modal's narrow-region selection adds a 1.75× multiplier
-to this inference allocation (approximately $7.47/hour including CPU/RAM).
-Training uses base-price placement. The browser connects to a local
+Inference runs on one cloud H100 using available placement (approximately
+$4.27/hour including CPU/RAM at the listed base rates). A nearby India/Singapore
+request queued for capacity during the live preview, so the default no longer
+restricts the region. The earlier pilot measurements below used nearby placement.
+Training also uses base-price placement. The browser connects to a local
 loopback proxy; only control messages and PNG frames cross the cloud link.
 The rolling visual history stays on the GPU, and Modal credentials remain in
 the local Python process. A direct TLS WebSocket tunnel uses a fresh strong
