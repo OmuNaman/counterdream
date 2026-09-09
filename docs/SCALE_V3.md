@@ -1,7 +1,13 @@
 # Five-GPU CS:GO experiment
 
-Status: **a new authorized workspace passed the five-H100 training check and
-the complete corpus transfer**. All 5,688 recordings transferred (241,422,928,128
+Status: **full five-H100 training is running in the new authorized workspace**.
+It started on 2026-09-09 at 09:38:37 UTC from clean commit
+`b8240b2ccfd1b139b46a3da100b69ed1832c2693`, with an absolute allocation deadline
+of 15:08:37 UTC. All five ranks are loading their data. No full-run quality
+result is available yet.
+
+The workspace passed its training check and complete corpus transfer.
+All 5,688 recordings transferred (241,422,928,128
 bytes of arrays), and the rebuilt destination index matches the original SHA-256
 exactly. No source files or training weights were modified or moved.
 The check completed 128 optimizer steps in
