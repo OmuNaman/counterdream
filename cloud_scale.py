@@ -14,7 +14,7 @@ data_image = (modal.Image.debian_slim(python_version="3.11")
 gpu_image = gpu_base_image.add_local_python_source("counterdream")
 
 
-def _launch(seconds, batch, source, resume, output, gpu_replay=False, target_steps=60000):
+def _launch(seconds, batch, source, resume, output, gpu_replay=False, target_steps=60000, data=DATA):
     import os
     import subprocess
     import sys
@@ -29,7 +29,7 @@ def _launch(seconds, batch, source, resume, output, gpu_replay=False, target_ste
     if latest.exists() != resume:
         raise ValueError("Resume must match whether a checkpoint already exists")
     args = [sys.executable, "-m", "torch.distributed.run", "--standalone", "--nnodes=1",
-            "--nproc-per-node=5", "-m", "counterdream.train_distributed", "--data", DATA,
+            "--nproc-per-node=5", "-m", "counterdream.train_distributed", "--data", data,
             "--output", output, "--steps", str(target_steps), "--max-seconds", str(seconds),
             "--batch", str(batch), "--source", str(source_path),
             "--commit-volume", VOLUME_NAME]
@@ -107,7 +107,7 @@ def train_five(source: dict, batch: int = 12, seconds: int = 19800):
 def source_manifest():
     import hashlib
     import subprocess
-    paths = sorted(Path("counterdream").glob("*.py")) + [Path("cloud_scale.py")]
+    paths = sorted(Path("counterdream").glob("*.py")) + sorted(Path(".").glob("cloud_*.py"))
     return dict(git_commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
                 dirty=bool(subprocess.check_output(["git", "status", "--porcelain"], text=True).strip()),
                 sha256={p.as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths})
