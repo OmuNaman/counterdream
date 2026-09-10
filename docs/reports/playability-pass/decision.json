@@ -1,0 +1,33 @@
+{
+  "promoted": false,
+  "selected_live_profile": "responsive-v1",
+  "reason": "MotionV2 reduced short-horizon error but failed both 20-second visual controls tests. Raw proposals stretch geometry and lose the weapon. Centering slows motion and still distorts weapon/scenery.",
+  "initialization": "random",
+  "external_world_model_weights": false,
+  "original_training_split_only": true,
+  "final_test_split_read": false,
+  "training_model_sha256": "820637aff41cc2dc3c0bb09954dc396f37ebe82ea794bfe370bb8a4a3d3fa2c0",
+  "browser_verified": [
+    "movement pad",
+    "W/S keyboard",
+    "F fire",
+    "Space jump",
+    "movement after setting change",
+    "pause overlay"
+  ],
+  "tests": {
+    "python": 44,
+    "javascript": 8
+  },
+  "region_probe": {
+    "region": "ap",
+    "result": "No GPU ready within120seconds; pending call cancelled; any-region remains default"
+  },
+  "compression": {
+    "old_mean_bytes": 40111.375,
+    "new_mean_bytes": 31560.9375,
+    "reduction_percent": 21.316739952195608,
+    "mean_psnr_db": 44.35981628259906,
+    "sample": "Every30th JPEG from previous459frame live recording; recompressed at quality88, chroma420"
+  }
+}

@@ -30,6 +30,16 @@ class Control(BaseModel):
     spawn: int = Field(default=0, ge=0)
     steps: int = Field(default=8, ge=2, le=16)
     fps: Literal[16, 24] = 16
+    input_id: int = Field(default=0, ge=0, le=2**53 - 1)
+    client_time_ms: float = Field(default=0, ge=0, allow_inf_nan=False)
+    look_x: float = Field(default=0, ge=-1000, le=1000, allow_inf_nan=False)
+    look_y: float = Field(default=0, ge=-200, le=200, allow_inf_nan=False)
+
+    def mouse_delta(self):
+        return (
+            max(-1000, min(1000, self.dx + self.look_x)),
+            max(-200, min(200, self.dy + self.look_y)),
+        )
 
 
 def png(frame):
@@ -44,13 +54,18 @@ def make_app(seed_path, predict, metadata=None, max_generated_frames=2000):
         seed_frames = seeds["frames"].copy()
         seed_actions = seeds["actions"].copy()
         names = seeds["names"].tolist()
-    if seed_frames.ndim != 5 or seed_frames.shape[1:] not in ((4,64,112,3),(8,88,160,3)):
+    if seed_frames.ndim != 5 or seed_frames.shape[1:] not in (
+        (4, 64, 112, 3),
+        (8, 88, 160, 3),
+    ):
         raise ValueError("Unexpected seed shape")
-    context_frames,height,width,_=seed_frames.shape[1:]
-    if seed_actions.shape != (len(seed_frames), context_frames-1, 51):
+    context_frames, height, width, _ = seed_frames.shape[1:]
+    if seed_actions.shape != (len(seed_frames), context_frames - 1, 51):
         raise ValueError("Unexpected seed action shape")
-    if metadata and (metadata.get("context_frames",context_frames)!=context_frames or
-                     metadata.get("resolution",[width,height])!=[width,height]):
+    if metadata and (
+        metadata.get("context_frames", context_frames) != context_frames
+        or metadata.get("resolution", [width, height]) != [width, height]
+    ):
         raise ValueError("Checkpoint and starting frames have different dimensions")
     app = FastAPI(title="CounterDream", docs_url=None, redoc_url=None)
     state = {"generated": 0}
@@ -68,6 +83,10 @@ def make_app(seed_path, predict, metadata=None, max_generated_frames=2000):
     @app.get("/style.css")
     def styles():
         return FileResponse(static / "style.css", media_type="text/css")
+
+    @app.get("/client-core.js")
+    def client_core():
+        return FileResponse(static / "client-core.js", media_type="text/javascript")
 
     @app.get("/api/info")
     def info():
@@ -138,7 +157,7 @@ def make_app(seed_path, predict, metadata=None, max_generated_frames=2000):
                     )
                     break
                 action = encode(
-                    control.keys, control.dx, control.dy, control.fire, control.scope
+                    control.keys, *control.mouse_delta(), control.fire, control.scope
                 )
                 full_actions = np.concatenate((actions, action[None]), axis=0)
                 now = time.perf_counter()
@@ -164,6 +183,15 @@ def make_app(seed_path, predict, metadata=None, max_generated_frames=2000):
                         "frame": frame,
                         "ms": round((time.perf_counter() - now) * 1000, 1),
                         "remaining": max_generated_frames - state["generated"],
+                        "input_id": control.input_id,
+                        "client_time_ms": control.client_time_ms,
+                        "applied": dict(
+                            keys=control.keys,
+                            fire=control.fire,
+                            scope=control.scope,
+                            dx=control.mouse_delta()[0],
+                            dy=control.mouse_delta()[1],
+                        ),
                     }
                 )
                 await ws.send_bytes(png(prediction))
@@ -227,7 +255,7 @@ def local_predict(checkpoint):
 
     return predict, {
         "device": device,
-        "resolution": [model.cfg.width,model.cfg.height],
+        "resolution": [model.cfg.width, model.cfg.height],
         "context_frames": model.cfg.context,
         "checkpoint_step": ckpt["step"],
         "pretrained_weights": False,

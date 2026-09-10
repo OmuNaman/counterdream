@@ -16,15 +16,17 @@ class Engine:
     def frame(self, session, command, sequence):
         self.calls.append((session, command, sequence))
         self.sessions[session] = {}
-        return dict(png=b"example-frame", frame=sequence-1, gpu_ms=25)
+        return dict(png=b"example-frame", frame=sequence - 1, gpu_ms=25)
 
 
-@pytest.mark.parametrize('fps',[16,24])
+@pytest.mark.parametrize("fps", [16, 24])
 def test_authenticated_stream_generates_without_per_frame_requests_and_stops(fps):
     engine = Engine()
-    app = make_gpu_stream(engine, "x"*40, {"last": time.monotonic()}, frame_budget=3)
+    app = make_gpu_stream(engine, "x" * 40, {"last": time.monotonic()}, frame_budget=3)
     with TestClient(app) as client:
-        with client.websocket_connect("/ws?spawn=1", headers={"authorization": "Bearer "+"x"*40}) as ws:
+        with client.websocket_connect(
+            "/ws?spawn=1", headers={"authorization": "Bearer " + "x" * 40}
+        ) as ws:
             assert ws.receive_json()["reset"]
             assert ws.receive_bytes() == b"example-frame"
             # One control produces several frames without a response/request cycle.
@@ -37,15 +39,18 @@ def test_authenticated_stream_generates_without_per_frame_requests_and_stops(fps
     assert [call[2] for call in engine.calls] == [1, 2, 3, 4]
     assert [call[1]["dx"] for call in engine.calls[1:]] == [30, 0, 0]
     assert all(call[1]["keys"] == ["w"] for call in engine.calls[1:])
-    assert all(call[1]['fps'] == fps for call in engine.calls[1:])
+    assert all(call[1]["fps"] == fps for call in engine.calls[1:])
     assert not engine.sessions
 
 
 def test_stream_rejects_invalid_authentication_and_spawn_before_model_use():
     engine = Engine()
-    app = make_gpu_stream(engine, "x"*40, {"last": time.monotonic()})
+    app = make_gpu_stream(engine, "x" * 40, {"last": time.monotonic()})
     with TestClient(app) as client:
-        for url, headers in (("/ws", {}), ("/ws?spawn=2", {"authorization": "Bearer "+"x"*40})):
+        for url, headers in (
+            ("/ws", {}),
+            ("/ws?spawn=2", {"authorization": "Bearer " + "x" * 40}),
+        ):
             with pytest.raises(WebSocketDisconnect):
                 with client.websocket_connect(url, headers=headers):
                     pass
@@ -53,37 +58,109 @@ def test_stream_rejects_invalid_authentication_and_spawn_before_model_use():
 
 
 def test_gpu_slot_is_released_if_the_control_receiver_fails():
-    engine=Engine()
-    app=make_gpu_stream(engine,'x'*40,{'last':time.monotonic()})
-    headers={'authorization':'Bearer '+'x'*40}
+    engine = Engine()
+    app = make_gpu_stream(engine, "x" * 40, {"last": time.monotonic()})
+    headers = {"authorization": "Bearer " + "x" * 40}
     with TestClient(app) as client:
-        with client.websocket_connect('/ws',headers=headers) as broken:
-            assert broken.receive_json()['reset']
+        with client.websocket_connect("/ws", headers=headers) as broken:
+            assert broken.receive_json()["reset"]
             broken.receive_bytes()
-            broken.send_bytes(b'not-a-text-control')
+            broken.send_bytes(b"not-a-text-control")
             with pytest.raises(WebSocketDisconnect):
                 broken.receive_json()
-        with client.websocket_connect('/ws',headers=headers) as next_client:
-            assert next_client.receive_json()['reset']
-            assert next_client.receive_bytes()==b'example-frame'
+        with client.websocket_connect("/ws", headers=headers) as next_client:
+            assert next_client.receive_json()["reset"]
+            assert next_client.receive_bytes() == b"example-frame"
+
+
+def test_short_taps_survive_a_busy_gpu_and_release_after_one_prediction():
+    import threading
+
+    rendering, release = threading.Event(), threading.Event()
+
+    class SlowEngine(Engine):
+        def frame(self, session, command, sequence):
+            if sequence == 2:
+                rendering.set()
+                assert release.wait(3)
+            return super().frame(session, command, sequence)
+
+    engine = SlowEngine()
+    app = make_gpu_stream(engine, "x" * 40, {"last": time.monotonic()}, frame_budget=3)
+    with TestClient(app) as client:
+        with client.websocket_connect(
+            "/ws", headers={"authorization": "Bearer " + "x" * 40}
+        ) as ws:
+            ws.receive_json()
+            ws.receive_bytes()
+            ws.send_json(dict(type="step", fps=24, input_id=1))
+            assert rendering.wait(2)
+            ws.send_json(
+                dict(
+                    type="step",
+                    keys=["w", "space"],
+                    fire=True,
+                    input_id=2,
+                    client_time_ms=100,
+                    look_x=10,
+                )
+            )
+            ws.send_json(
+                dict(
+                    type="step",
+                    keys=[],
+                    fire=False,
+                    input_id=3,
+                    client_time_ms=110,
+                    look_x=10,
+                )
+            )
+            # Give the independent receiver a chance to read both while the GPU is busy.
+            threading.Timer(0.05, release.set).start()
+            first = ws.receive_json()
+            ws.receive_bytes()
+            tap = ws.receive_json()
+            ws.receive_bytes()
+            after = ws.receive_json()
+            ws.receive_bytes()
+            assert first["applied"]["keys"] == []
+            assert tap["applied"]["keys"] == ["space", "w"] and tap["applied"]["fire"]
+            assert tap["input_id"] == 3 and tap["client_time_ms"] == 110
+            assert after["applied"]["keys"] == [] and not after["applied"]["fire"]
+            assert tap["applied"]["dx"] == after["applied"]["dx"] == 10
+
+
+def test_mouse_delta_consumes_movement_once_but_holds_arrow_look():
+    from counterdream.serve import Control
+
+    assert Control(dx=5, look_x=10, dy=-2, look_y=-4).mouse_delta() == (15, -6)
+    assert Control(dx=1000, look_x=30).mouse_delta() == (1000, 0)
 
 
 def test_local_proxy_rejects_foreign_origin_before_gpu_allocation():
     async def remote():
         raise AssertionError("Must not allocate a GPU for a rejected connection")
+
     with TestClient(make_stream_proxy(dict(spawns=["One"]), remote)) as client:
         assert client.get("/api/info").json()["streaming"]
         with pytest.raises(WebSocketDisconnect):
-            with client.websocket_connect("/ws", headers={"origin": "https://example.com"}):
-                    pass
+            with client.websocket_connect(
+                "/ws", headers={"origin": "https://example.com"}
+            ):
+                pass
 
 
 def test_live_metadata_sets_sampler_and_expired_allocation_explains_failure():
     from counterdream.stream_lease import AllocationEnded
+
     async def remote():
         raise AllocationEnded("This 30-minute viewer allocation has ended.")
-    with TestClient(make_stream_proxy(dict(spawns=["Val 1"], recommended_steps=8,
-                                          checkpoint_step=34000), remote)) as client:
+
+    with TestClient(
+        make_stream_proxy(
+            dict(spawns=["Val 1"], recommended_steps=8, checkpoint_step=34000), remote
+        )
+    ) as client:
         info = client.get("/api/info").json()
         assert info["recommended_steps"] == 8 and info["checkpoint_step"] == 34000
         with client.websocket_connect("/ws") as ws:
@@ -97,44 +174,56 @@ def test_refresh_replaces_old_connection_and_reuses_pending_gpu_start(monkeypatc
     import websockets
 
     starting, release = threading.Event(), threading.Event()
-    starts=[]
+    starts = []
+
     async def get_remote():
         starts.append(1)
         starting.set()
         while not release.is_set():
-            await asyncio.sleep(.005)
-        return 'https://example.modal.host','x'*40
+            await asyncio.sleep(0.005)
+        return "https://example.modal.host", "x" * 40
 
     class Remote:
-        async def __aenter__(self):return self
-        async def __aexit__(self,*args):pass
-        async def send(self,raw):pass
-        async def messages(self):
-            yield json.dumps({'reset':True,'frame':0})
-            yield b'frame-from-existing-gpu'
-            await asyncio.Event().wait()
-        def __aiter__(self):return self.messages()
+        async def __aenter__(self):
+            return self
 
-    connects=[]
-    def connect(*args,**kwargs):
+        async def __aexit__(self, *args):
+            pass
+
+        async def send(self, raw):
+            pass
+
+        async def messages(self):
+            yield json.dumps({"reset": True, "frame": 0})
+            yield b"frame-from-existing-gpu"
+            await asyncio.Event().wait()
+
+        def __aiter__(self):
+            return self.messages()
+
+    connects = []
+
+    def connect(*args, **kwargs):
         from types import SimpleNamespace
         from websockets.exceptions import InvalidStatus
+
         connects.append(1)
-        if len(connects)==1:
+        if len(connects) == 1:
             raise InvalidStatus(SimpleNamespace(status_code=403))
         return Remote()
-    monkeypatch.setattr(websockets,'connect',connect)
-    with TestClient(make_stream_proxy(dict(spawns=['One']),get_remote)) as client:
-        with client.websocket_connect('/ws') as old:
+
+    monkeypatch.setattr(websockets, "connect", connect)
+    with TestClient(make_stream_proxy(dict(spawns=["One"]), get_remote)) as client:
+        with client.websocket_connect("/ws") as old:
             assert starting.wait(2)
             # New browser connection arrives before the GPU has finished loading.
-            with client.websocket_connect('/ws') as fresh:
+            with client.websocket_connect("/ws") as fresh:
                 release.set()
-                assert fresh.receive_json()['reset']
-                assert fresh.receive_bytes()==b'frame-from-existing-gpu'
-                assert starts==[1]
-                assert len(connects)==2  # Same GPU start; its old socket was closing.
+                assert fresh.receive_json()["reset"]
+                assert fresh.receive_bytes() == b"frame-from-existing-gpu"
+                assert starts == [1]
+                assert len(connects) == 2  # Same GPU start; its old socket was closing.
         # A later reconnect also works after both previous sockets have closed.
-        with client.websocket_connect('/ws') as later:
-            assert later.receive_json()['reset']
-            assert later.receive_bytes()==b'frame-from-existing-gpu'
+        with client.websocket_connect("/ws") as later:
+            assert later.receive_json()["reset"]
+            assert later.receive_bytes() == b"frame-from-existing-gpu"

@@ -1,0 +1,197 @@
+{
+  "metrics": {
+    "v1-raw": [
+      0.00947650894522667,
+      0.013071888126432896,
+      0.0170268751680851,
+      0.020540442317724228,
+      0.022931450977921486,
+      0.025889208540320396,
+      0.02708151564002037,
+      0.02923767641186714
+    ],
+    "v1-centered": [
+      0.010598259046673775,
+      0.014721724204719067,
+      0.018693752586841583,
+      0.022635525092482567,
+      0.02511437237262726,
+      0.0285273939371109,
+      0.029582016170024872,
+      0.03157549351453781
+    ],
+    "v2-raw": [
+      0.008775793015956879,
+      0.010907449759542942,
+      0.01361756306141615,
+      0.01564389280974865,
+      0.01757349632680416,
+      0.02017797902226448,
+      0.021619226783514023,
+      0.023249372839927673
+    ],
+    "v2-centered": [
+      0.010578475892543793,
+      0.014308324083685875,
+      0.017430001869797707,
+      0.020544912666082382,
+      0.022752461954951286,
+      0.025977233424782753,
+      0.027709688991308212,
+      0.029231319203972816
+    ],
+    "repeat": [
+      0.01346370205283165,
+      0.019111614674329758,
+      0.02357749454677105,
+      0.027617886662483215,
+      0.029976895079016685,
+      0.03372658044099808,
+      0.035708069801330566,
+      0.03763263300061226
+    ]
+  },
+  "rollouts": [
+    {
+      "name": "v1-centered-spawn0",
+      "frames": 320,
+      "gpu_ms_median": 35.1,
+      "motion_sha256": "fa7fce077412db1cc0f70686eea2c98f3ee6845ebfe8106b35043d8a796b009b"
+    },
+    {
+      "name": "v1-centered-spawn4",
+      "frames": 320,
+      "gpu_ms_median": 35.0,
+      "motion_sha256": "fa7fce077412db1cc0f70686eea2c98f3ee6845ebfe8106b35043d8a796b009b"
+    },
+    {
+      "name": "v2-raw-spawn0",
+      "frames": 320,
+      "gpu_ms_median": 34.8,
+      "motion_sha256": "820637aff41cc2dc3c0bb09954dc396f37ebe82ea794bfe370bb8a4a3d3fa2c0"
+    },
+    {
+      "name": "v2-raw-spawn4",
+      "frames": 320,
+      "gpu_ms_median": 34.5,
+      "motion_sha256": "820637aff41cc2dc3c0bb09954dc396f37ebe82ea794bfe370bb8a4a3d3fa2c0"
+    },
+    {
+      "name": "v2-centered-spawn0",
+      "frames": 320,
+      "gpu_ms_median": 36.7,
+      "motion_sha256": "820637aff41cc2dc3c0bb09954dc396f37ebe82ea794bfe370bb8a4a3d3fa2c0"
+    },
+    {
+      "name": "v2-centered-spawn4",
+      "frames": 320,
+      "gpu_ms_median": 36.9,
+      "motion_sha256": "820637aff41cc2dc3c0bb09954dc396f37ebe82ea794bfe370bb8a4a3d3fa2c0"
+    }
+  ],
+  "seconds": 88.003604056,
+  "files": {
+    "metrics.json": {
+      "bytes": 1125,
+      "sha256": "653332bdf10d9478c142c648cd717221807d9e6bb05a13cd3715bdd2fd0cf208"
+    },
+    "v1-centered-spawn0/contact-sheet.jpg": {
+      "bytes": 169802,
+      "sha256": "809ef4a80e049e593552510a73e0ada217622600d698d3a4e0a2a0038aff97ef"
+    },
+    "v1-centered-spawn0/native-frames.npz": {
+      "bytes": 8718524,
+      "sha256": "02352dda9ac11999a4795f19d64fd4882152d8758814d93167e455104f6d5bed"
+    },
+    "v1-centered-spawn0/report.json": {
+      "bytes": 163,
+      "sha256": "73a1121dc7e0f5d27d39801b66b9bc902b90af138cbdab828173f9a4199d3b20"
+    },
+    "v1-centered-spawn0/rollout.mp4": {
+      "bytes": 6204083,
+      "sha256": "ea305f13d71bb26f2c334b03b5e2a01b4ee21967b964ab1956c0754e8b692cb6"
+    },
+    "v1-centered-spawn4/contact-sheet.jpg": {
+      "bytes": 230144,
+      "sha256": "eb489c6606a5997b5517d5d68efdb2d27f147d417fcc8d9fe6ddc41f2b344e47"
+    },
+    "v1-centered-spawn4/native-frames.npz": {
+      "bytes": 10431977,
+      "sha256": "e736804d316ad3e335a56b10f395aeb1e545c2b77f5ba0ee901c1c1856692426"
+    },
+    "v1-centered-spawn4/report.json": {
+      "bytes": 163,
+      "sha256": "64573d7e3323d934cfff298299e1a14740a6c20eff0259cedf6fe9a205941872"
+    },
+    "v1-centered-spawn4/rollout.mp4": {
+      "bytes": 7485499,
+      "sha256": "e32133107c2ef5766bb78dd3d42084e0562f7e2e7728aa94c6976dfae1579474"
+    },
+    "v2-centered-spawn0/contact-sheet.jpg": {
+      "bytes": 162898,
+      "sha256": "fbd59b6914121cd0d929c6b8c87483caa628f8d88739a6d5ed49b77814750a2c"
+    },
+    "v2-centered-spawn0/native-frames.npz": {
+      "bytes": 8949749,
+      "sha256": "0f7d323ce22a03523cfe1d2ce5d29ed0197ba30f7912349b72360e9a1e54e7b6"
+    },
+    "v2-centered-spawn0/report.json": {
+      "bytes": 163,
+      "sha256": "9b0040a886e80c17f53ac8a7995be8d2b77ec1e569a1e0a11dcbebfe68294a37"
+    },
+    "v2-centered-spawn0/rollout.mp4": {
+      "bytes": 6275425,
+      "sha256": "5b20e4b3fe8842bf24a2498a0cf29191662e6c31b6e390e83d6c4fd6773ea49d"
+    },
+    "v2-centered-spawn4/contact-sheet.jpg": {
+      "bytes": 217175,
+      "sha256": "8ba075c8d775d56191f24bf77efaf858638500f1c1d6032d9441ffd5bfbcd685"
+    },
+    "v2-centered-spawn4/native-frames.npz": {
+      "bytes": 10060532,
+      "sha256": "a3318a8c9465589e322fd216ba72222b2a3e85aefaa3200aef077510a6abd982"
+    },
+    "v2-centered-spawn4/report.json": {
+      "bytes": 163,
+      "sha256": "d6dbf54c3f86dc7a6b918e823de1f4ea321ed83e1db1d75b00d21512baf7231c"
+    },
+    "v2-centered-spawn4/rollout.mp4": {
+      "bytes": 7758090,
+      "sha256": "25b6dde603e4d4945407478de791f71ea439bbadb995a9802aec5c8d3da885c2"
+    },
+    "v2-raw-spawn0/contact-sheet.jpg": {
+      "bytes": 147590,
+      "sha256": "1eac5f9795671a3c88b2aa53e7f5c284aec342dbb579eabba621081a7b16ed32"
+    },
+    "v2-raw-spawn0/native-frames.npz": {
+      "bytes": 8407290,
+      "sha256": "38371bb93a4a530177c5749db2afb75c3517a4f5b1d669ed6b6fe8175468f4e7"
+    },
+    "v2-raw-spawn0/report.json": {
+      "bytes": 158,
+      "sha256": "11524f097ec801042b0ef870027947d9f465d49b6941c12eb6879b78874e0f3c"
+    },
+    "v2-raw-spawn0/rollout.mp4": {
+      "bytes": 5812344,
+      "sha256": "e64fb0d391e04da8345ac65f7e5ae350569939b938068c4736bce4b0aacf0300"
+    },
+    "v2-raw-spawn4/contact-sheet.jpg": {
+      "bytes": 132765,
+      "sha256": "de0f1a8e66300fdd2063ad91533f58c9d5a5eda0d3ef24baa29f70aad9b137a2"
+    },
+    "v2-raw-spawn4/native-frames.npz": {
+      "bytes": 9043106,
+      "sha256": "d81205475975ee983af7b4791b3521f5b2bda231241adf413e9b01ac4d447866"
+    },
+    "v2-raw-spawn4/report.json": {
+      "bytes": 158,
+      "sha256": "1ae83fdb9032f33dca413d15eda880830bfdc33a2375f869b47609fd681b254b"
+    },
+    "v2-raw-spawn4/rollout.mp4": {
+      "bytes": 5146954,
+      "sha256": "529679699ff552f58b2b0322a138989c6e51dffe170969510be3da6ce1e30ae7"
+    }
+  },
+  "validation": "128 fixed episode-disjoint windows from original training split; no test data read",
+  "recording": "offline playback at 16fps, not a latency benchmark; no resets or recorded future frames"
+}
