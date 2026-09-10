@@ -52,6 +52,22 @@ def test_stream_rejects_invalid_authentication_and_spawn_before_model_use():
     assert not engine.calls
 
 
+def test_gpu_slot_is_released_if_the_control_receiver_fails():
+    engine=Engine()
+    app=make_gpu_stream(engine,'x'*40,{'last':time.monotonic()})
+    headers={'authorization':'Bearer '+'x'*40}
+    with TestClient(app) as client:
+        with client.websocket_connect('/ws',headers=headers) as broken:
+            assert broken.receive_json()['reset']
+            broken.receive_bytes()
+            broken.send_bytes(b'not-a-text-control')
+            with pytest.raises(WebSocketDisconnect):
+                broken.receive_json()
+        with client.websocket_connect('/ws',headers=headers) as next_client:
+            assert next_client.receive_json()['reset']
+            assert next_client.receive_bytes()==b'example-frame'
+
+
 def test_local_proxy_rejects_foreign_origin_before_gpu_allocation():
     async def remote():
         raise AssertionError("Must not allocate a GPU for a rejected connection")
@@ -99,7 +115,15 @@ def test_refresh_replaces_old_connection_and_reuses_pending_gpu_start(monkeypatc
             await asyncio.Event().wait()
         def __aiter__(self):return self.messages()
 
-    monkeypatch.setattr(websockets,'connect',lambda *args,**kwargs:Remote())
+    connects=[]
+    def connect(*args,**kwargs):
+        from types import SimpleNamespace
+        from websockets.exceptions import InvalidStatus
+        connects.append(1)
+        if len(connects)==1:
+            raise InvalidStatus(SimpleNamespace(status_code=403))
+        return Remote()
+    monkeypatch.setattr(websockets,'connect',connect)
     with TestClient(make_stream_proxy(dict(spawns=['One']),get_remote)) as client:
         with client.websocket_connect('/ws') as old:
             assert starting.wait(2)
@@ -109,6 +133,7 @@ def test_refresh_replaces_old_connection_and_reuses_pending_gpu_start(monkeypatc
                 assert fresh.receive_json()['reset']
                 assert fresh.receive_bytes()==b'frame-from-existing-gpu'
                 assert starts==[1]
+                assert len(connects)==2  # Same GPU start; its old socket was closing.
         # A later reconnect also works after both previous sockets have closed.
         with client.websocket_connect('/ws') as later:
             assert later.receive_json()['reset']

@@ -1,6 +1,6 @@
 """Continuous authenticated GPU streaming, decoupled from control round trips."""
 import asyncio
-from contextlib import suppress
+from contextlib import AsyncExitStack,asynccontextmanager,suppress
 import hmac
 import json
 from pathlib import Path
@@ -77,6 +77,8 @@ def make_gpu_stream(engine,token,activity,frame_budget=12000):
                         state["dy"]+=control.dy
                         state["paused"]=False
             except WebSocketDisconnect:
+                pass
+            finally:
                 state["closed"]=True
 
         receiver=asyncio.create_task(receive())
@@ -116,12 +118,11 @@ def make_gpu_stream(engine,token,activity,frame_budget=12000):
         except WebSocketDisconnect:
             pass
         finally:
-            receiver.cancel()
-            with suppress(asyncio.CancelledError,WebSocketDisconnect):
-                await receiver
             total["connected"]=False
             engine.sessions.pop(session,None)
             activity["last"]=time.monotonic()
+            receiver.cancel()
+            await asyncio.gather(receiver,return_exceptions=True)
             with suppress(Exception):
                 await ws.close()
     return app
@@ -141,6 +142,25 @@ def make_stream_proxy(metadata,get_remote):
         if connection['startup'] is None or connection['startup'].done():
             connection['startup']=asyncio.create_task(get_remote())
         return await asyncio.shield(connection['startup'])
+
+    @asynccontextmanager
+    async def remote_connection(url,token,spawn):
+        from websockets.exceptions import InvalidStatus
+        async with AsyncExitStack() as cleanup:
+            for attempt in range(10):
+                try:
+                    remote=await cleanup.enter_async_context(websockets.connect(
+                        url.replace('https://','wss://',1)+f'/ws?spawn={spawn}',
+                        additional_headers={'Authorization':'Bearer '+token},
+                        open_timeout=45,close_timeout=1,max_size=2_000_000,max_queue=4))
+                    break
+                except InvalidStatus as exc:
+                    # The prior GPU session releases its slot after an in-flight
+                    # prediction completes. Retry the same authenticated endpoint.
+                    if exc.response.status_code not in (403,409,503) or attempt==9:
+                        raise
+                    await asyncio.sleep(.15)
+            yield remote
 
     @app.get("/")
     def index():
@@ -193,9 +213,7 @@ def make_stream_proxy(metadata,get_remote):
             parsed=urlparse(url)
             if parsed.scheme!="https" or not (parsed.hostname or "").endswith(".modal.host"):
                 raise ValueError("Unexpected tunnel destination")
-            async with websockets.connect(url.replace("https://","wss://",1)+f"/ws?spawn={spawn}",
-                                          additional_headers={"Authorization":"Bearer "+token},
-                                          open_timeout=45,close_timeout=1,max_size=2_000_000,max_queue=4) as remote:
+            async with remote_connection(url,token,spawn) as remote:
                 async def controls():
                     while True:
                         raw=await ws.receive_text()
