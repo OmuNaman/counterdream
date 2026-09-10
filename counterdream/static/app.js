@@ -159,13 +159,22 @@ window.addEventListener('keyup', event => { if (input.up(event.code)) { event.pr
 window.addEventListener('blur', pause);
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 for (const button of document.querySelectorAll('[data-control]')) {
+  let lastPointer = -Infinity;
   button.addEventListener('pointerdown', event => {
     if (!playing) return;
+    lastPointer = performance.now();
     event.preventDefault(); button.setPointerCapture(event.pointerId);
     input.pointers.set(event.pointerId, button.dataset.control); changed();
   });
   const release = event => { if (input.pointers.delete(event.pointerId)) changed(); };
   button.addEventListener('pointerup', release); button.addEventListener('pointercancel', release); button.addEventListener('lostpointercapture', release);
+  // Keyboard/assistive activation can emit click without pointerdown/up.
+  button.addEventListener('click', () => {
+    if (!playing || performance.now()-lastPointer < 350) return;
+    const id = Symbol('button-tap');
+    input.pointers.set(id, button.dataset.control); changed();
+    setTimeout(() => { input.pointers.delete(id); changed(); }, 100);
+  });
 }
 $('viewport').addEventListener('pointerdown', event => {
   if (!playing || event.target.closest('button')) return;

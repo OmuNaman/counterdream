@@ -351,12 +351,18 @@ def make_stream_proxy(metadata, get_remote):
         finally:
             for task in tasks:
                 task.cancel()
-            if tasks:
-                await asyncio.gather(*tasks, return_exceptions=True)
-            with suppress(Exception):
-                await asyncio.wait_for(ws.close(), timeout=1)
+            # A second cancellation (ASGI disconnect/shutdown) may interrupt any
+            # await below. Release ownership synchronously so it cannot strand
+            # the next browser connection behind an unset completion event.
             if connection["task"] is owner:
                 connection["task"] = None
             owner["closed"].set()
+            if tasks:
+                with suppress(asyncio.CancelledError, TimeoutError):
+                    await asyncio.wait_for(
+                        asyncio.gather(*tasks, return_exceptions=True), timeout=1
+                    )
+            with suppress(Exception, asyncio.CancelledError):
+                await asyncio.wait_for(ws.close(), timeout=1)
 
     return app

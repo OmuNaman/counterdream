@@ -34,10 +34,13 @@ game engine, recorded future frames, or firing overlays were substituted.
 
 The Python stream tests and JavaScript client tests cover short taps during a busy
 GPU, release, held look, immediate keyboard sends, focus loss, decoder failures,
-bursts of 100 frames, and resets during decoding. **44 Python and 8 JavaScript tests
+bursts of 100 frames, and resets during decoding. **44 Python and 10 JavaScript tests
 passed.** Browser tests confirmed W/S, fire, jump, the movement buttons, pause,
 and restored keyboard focus after changing a setting. Mouse capture support is
-browser-dependent; right-drag and arrow keys are the fallback.
+browser-dependent; capture was unavailable in the in-app browser. Right-drag and
+arrow keys are the fallback. Assistive button clicks also send a short action.
+Linux CI exposed cancellation during reconnect cleanup; ownership is now released
+before awaited cleanup so another cancellation cannot strand the next connection.
 
 An Asia-Pacific H100 startup probe did not produce a ready GPU within 120 seconds;
 its pending invocation was cancelled. The working unconstrained location remains
