@@ -1,0 +1,18 @@
+{
+  "frames": 480,
+  "display_resolution": [
+    640,
+    352
+  ],
+  "spawn": 0,
+  "seconds": 31.861799599952064,
+  "delivered_fps": 15.371239820284481,
+  "gpu_ms_median": 48.45,
+  "control_response_ms_median": 438.8207999872975,
+  "control_response_ms_p95": 1633.879499975592,
+  "resets_after_initial_seed": 0,
+  "recorded_future_frames_injected": 0,
+  "protocol": "Actual cloud streaming; controls scheduled by wall time. Stored metadata records controls applied by the GPU.",
+  "video_playback_fps": 16,
+  "video_sha256": "4830da20f44df3478ac09c246fb8fc2bebc93ff0aeb27b28b6a9c58d0e98e1d7"
+}

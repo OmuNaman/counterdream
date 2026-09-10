@@ -22,6 +22,31 @@ def prepare_latest(snapshot:str):
     return report
 
 
+@app.function(image=image,cpu=2,memory=2048,timeout=180,retries=0,volumes={'/artifacts':volume})
+def prepare_demo():
+    """Reuse existing validated20k weights; uploaded bundle fixes every checksum."""
+    import shutil
+    from counterdream.live_checkpoint import sha256
+    volume.reload()
+    folder=artifact_folder('demo')
+    manifest=json.loads((folder/'bundle.json').read_text())
+    source=Path(RUN,'evaluation-val-8-step-20000')
+    for name in ('model.pt','seeds.npz'):
+        if sha256(source/name)!=manifest['files'][name]:
+            raise ValueError('Source artifact differs from demo manifest')
+        if not (folder/name).exists():shutil.copyfile(source/name,folder/name)
+    for name,digest in manifest['files'].items():
+        if Path(name).name!=name or sha256(folder/name)!=digest:
+            raise ValueError('Demo artifact integrity check failed')
+    volume.commit()
+    return manifest
+
+
+@app.local_entrypoint()
+def demo_ready():
+    print(json.dumps(prepare_demo.remote()),flush=True)
+
+
 def artifact_folder(variant,snapshot=""):
     if variant=="latest":
         return snapshot_folder(RUN,snapshot)
@@ -29,7 +54,9 @@ def artifact_folder(variant,snapshot=""):
         return Path(RUN,"evaluation-test-4")
     if variant=="pilot":
         return Path(PILOT,"evaluation-val-4")
-    raise ValueError("Choose latest, full or pilot")
+    if variant=="demo":
+        return Path(RUN,"demo-upgrade-v1")
+    raise ValueError("Choose latest, full, pilot or demo")
 
 
 @app.function(image=image,gpu=GPU_TYPE,cpu=4,memory=16384,
@@ -55,12 +82,18 @@ def stream_server(queue,token:str,variant:str="full",snapshot:str="",deadline_un
         report=json.loads((folder/"preview.json").read_text())
         if sha256(folder/"model.pt")!=report["export_sha256"] or sha256(folder/"seeds.npz")!=report["seeds_sha256"]:
             raise ValueError("Live snapshot integrity check failed")
-    engine=SessionEngine(folder/"model.pt",folder/"seeds.npz")
+    if variant=="demo":
+        from counterdream.live_checkpoint import sha256
+        manifest=json.loads((folder/'bundle.json').read_text())
+        for name,digest in manifest['files'].items():
+            if Path(name).name!=name or sha256(folder/name)!=digest:
+                raise ValueError('Demo bundle integrity check failed')
+    engine=SessionEngine(folder/"model.pt",folder/"seeds.npz",folder/'profile.json' if variant=='demo' else None)
     if variant=="latest" and engine.checkpoint["step"]!=report["checkpoint_step"]:
         raise ValueError("Live snapshot step mismatch")
     # Warm kernels before the first playable frame, then discard the warmup state.
     engine.frame("0"*32,{"type":"reset","spawn":0},0)
-    engine.frame("0"*32,{"type":"step","steps":8 if variant=="latest" else 4},1)
+    engine.frame("0"*32,{"type":"step","steps":8 if variant in ("latest","demo") else 4},1)
     engine.sessions.clear()
     activity={"last":time.monotonic()}
     application=make_gpu_stream(engine,token,activity)
@@ -134,7 +167,7 @@ def play(variant: str = "full", snapshot_id: str = ""):
         print(json.dumps(dict(event="live_snapshot",**report)),flush=True)
     else:
         volume_folder=folder.relative_to("/artifacts").as_posix()
-        report=json.loads(b"".join(volume.read_file(volume_folder+"/evaluation.json")))
+        report=json.loads(b"".join(volume.read_file(volume_folder+("/bundle.json" if variant=='demo' else "/evaluation.json"))))
         import io
         import numpy as np
         with np.load(io.BytesIO(b"".join(volume.read_file(volume_folder+"/seeds.npz"))),allow_pickle=False) as seeds:
@@ -142,8 +175,11 @@ def play(variant: str = "full", snapshot_id: str = ""):
     metadata=dict(model="CounterDream v3 / Dust II",device=f"Cloud {GPU_TYPE}"+(" · training preview" if variant=="latest" else " · pilot" if variant=="pilot" else ""),spawns=names,
                   checkpoint_step=report["checkpoint_step"],context_frames=report["config"]["context"],
                   resolution=[report["config"]["width"],report["config"]["height"]],pretrained_weights=False,
-                  recommended_steps=8 if variant=="latest" else 4,
+                  recommended_steps=8 if variant in ("latest","demo") else 4,
                   session_note=f"Separate {GPU_TYPE} · pauses when unfocused · GPU stops after 90 seconds idle · 30-minute allocation window")
+    if variant=='demo':
+        metadata.update(recommended_steps=report['sampling_steps'],display_resolution=report['display_resolution'],
+                        display_note=report['display_note'],quality_note=report['quality_note'])
     token=secrets.token_urlsafe(32)
     with modal.Queue.ephemeral() as queue:
         async def start(remaining):

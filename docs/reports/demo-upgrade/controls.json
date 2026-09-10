@@ -1,0 +1,32 @@
+{
+  "profile": {
+    "sampling": {
+      "steps": 4,
+      "sigma_max": 0.3,
+      "solver": "euler",
+      "context_noise": 0.03,
+      "warm_start": true,
+      "initial_noise_scale": 1.0
+    },
+    "motion_checkpoint": "artifacts/demo-upgrade/motion-v1/model.pt",
+    "motion_only": false,
+    "motion_scale": 0.35,
+    "note": "Stabilized demo candidate: learned motion magnitude35percent, diffusiondenoising retained; no resets or future recorded frames.",
+    "upscaler": "artifacts/display-upscaler/realesr-general-x4v3.pth"
+  },
+  "checkpoint_sha256": "21019b9599251ff86f5d0b549689415d7b54e782ed883558592030db254ade4a",
+  "motion_sha256": "fa7fce077412db1cc0f70686eea2c98f3ee6845ebfe8106b35043d8a796b009b",
+  "seeds_sha256": "a71c45f33b6ab360fde2bd62c437a80d94ad6e12d9b295d64b985563d943ae82",
+  "frame_count": 32,
+  "spawn": 0,
+  "matched_noise": true,
+  "versus_idle_mse": {
+    "IDLE": 0.0,
+    "FORWARD": 0.0030497193802148104,
+    "BACKWARD": 0.0027464888989925385,
+    "LEFT": 0.005104771349579096,
+    "RIGHT": 0.001687777927145362,
+    "FIRE": 0.0006846117321401834
+  },
+  "interpretation": "Image differences demonstrate action sensitivity, not correct game physics or hit detection."
+}

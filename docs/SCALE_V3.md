@@ -1,14 +1,15 @@
 # Five-GPU CS:GO experiment
 
-Status: **full five-H100 training is running in the new authorized workspace**.
+Status: **full five-H100 training completed 60,000 steps**.
 It started on 2026-09-09 at 09:38:37 UTC from clean commit
 `b8240b2ccfd1b139b46a3da100b69ed1832c2693`, with an absolute allocation deadline
-of 15:08:37 UTC. All five ranks loaded their data and the run has passed
-50,000 of 60,000 planned optimizer steps. Peak memory reported by rank zero
+of 15:08:37 UTC. The run finished in 14,217.45 seconds (3 hours 57 minutes),
+before that deadline. All five final model hashes agree, and the complete
+989,531,190-byte checkpoint was downloaded and verified. Peak memory reported by rank zero
 is 67.74 GB, with roughly 0.225 seconds per training step. These are observed
 training measurements, not a claim of playable quality.
 
-Validation previews through 50,000 steps show recognizable scenes,
+Validation previews through 60,000 steps show recognizable scenes,
 weapons, and responses to controls. Turning still blurs and longer generated
 sequences drift or lose scene structure. Eight denoising passes retain more
 texture in some sequences than four, but can increase pixel error and nearly
@@ -30,11 +31,13 @@ images; smaller values need not mean sharper images or more consistent gameplay.
 | [20,000](reports/v3-validation-step-20000-8.json) | 0.01209 | 0.06747 | 46.2 ms |
 | [30,000](reports/v3-validation-step-30000-8.json) | 0.01436 | 0.06663 | 56.3 ms |
 | [50,000](reports/v3-validation-step-50000-8.json) | 0.01531 | 0.06374 | 46.0 ms |
+| [60,000](reports/v3-validation-step-60000-8.json) | 0.01911 | 0.06734 | 48.5 ms |
 
 Generation times are measurements from individual cloud GPU sessions, excluding
 network delivery. Reports include checkpoint hashes, sampling settings, dataset
 counts, and evaluation-source hashes. No checkpoint has been selected for a v3
-release yet.
+general-purpose release yet. The [demo upgrade](DEMO_UPGRADE.md) uses 20k weights
+with learned motion guidance for selected short demonstrations.
 
 At 50,000 steps, next-frame error is higher than at 30,000 while frame-128
 error is slightly lower. The images remain unstable, so this mixed numerical
@@ -224,7 +227,7 @@ $2.42/hour including four CPU cores and 16 GiB RAM at
 switched to A100 at the user's request after H100 allocation requests queued.
 The earlier pilot measurements below used an H100 with nearby placement.
 Training also uses base-price placement. The browser connects to a local
-loopback proxy; only control messages and PNG frames cross the cloud link.
+loopback proxy; only control messages and encoded images cross the cloud link.
 The rolling visual history stays on the GPU, and Modal credentials remain in
 the local Python process. A direct TLS WebSocket tunnel uses a fresh strong
 Bearer token held only by the two server processes. Its address is publicly
@@ -274,12 +277,12 @@ much slower: 2.79 seconds median and 3.19 seconds p95. This is a functioning
 preview, with substantial input delay; it does not establish smooth gameplay.
 The [measured report](reports/v3-live-step-36000-a100-4.json) records checkpoint
 and export hashes. Browser connection, generated frames, pause, reset, and
-preserving the chosen sampler across connection were checked. Training continues
-independently on five H100s, and these starting views come from validation only.
+preserving the chosen sampler across connection were checked. Training was running
+independently during this measurement; it has since completed. These starting
+views come from validation only.
 
-Main training
-is planned for roughly 4–6 hours including overhead, bounded as above; final
-runtime and quality remain to be measured on the full corpus.
+Main training completed in 3 hours 57 minutes. Its final 60,000-step state and
+intermediate previews still do not establish a stable, generally playable game.
 
 ## Attribution
 

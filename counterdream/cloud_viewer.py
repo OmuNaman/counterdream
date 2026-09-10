@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from .serve import Control
 
 
-def make_cloud_app(metadata, remote_frame, frame_budget=12000):
+def make_cloud_app(metadata, remote_frame, frame_budget=12000, on_session_end=None):
     app = FastAPI(title="CounterDream Cloud", docs_url=None, redoc_url=None)
     static = Path(__file__).parent / "static"
     state = {"generated": 0}
@@ -93,4 +93,7 @@ def make_cloud_app(metadata, remote_frame, frame_budget=12000):
                 await ws.send_json({"error":"Cloud inference stopped. Reconnect to start a new session."})
             except Exception:
                 pass
+        finally:
+            if on_session_end is not None:
+                on_session_end(session)
     return app

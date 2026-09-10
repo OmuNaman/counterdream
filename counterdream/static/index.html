@@ -35,6 +35,7 @@
             aria-label="Neural game viewport"
           >
             <canvas id="canvas" width="112" height="64"></canvas>
+            <button id="exit-fullscreen">EXIT FULLSCREEN</button>
             <div class="reticle"></div>
             <div class="screen-label">
               <span>DUST II</span><span>NEURAL SIMULATION</span>
@@ -56,6 +57,8 @@
           <div class="transport">
             <button id="pause" disabled>PAUSE</button
             ><button id="reset" disabled>↻ RESET WORLD</button>
+            <button id="fullscreen" aria-label="Toggle fullscreen">⛶</button>
+            <button id="record" disabled>RECORD 30s</button>
             <div class="spacer"></div>
             <span id="remaining">2,000 frame session limit</span>
           </div>
@@ -75,6 +78,17 @@
               <option value="8">8 steps · balanced</option>
               <option value="4">4 steps · faster</option>
               <option value="16">16 steps · slower</option>
+            </select>
+            <label for="turn-speed">Look speed</label>
+            <select id="turn-speed">
+              <option value="4">Gentle</option>
+              <option value="10" selected>Normal</option>
+              <option value="30">Fast</option>
+            </select>
+            <label for="display-mode">Display</label>
+            <select id="display-mode">
+              <option value="smooth">Smooth</option>
+              <option value="pixelated">Pixelated</option>
             </select>
             <p class="small" id="resolution-copy">
               Model output is enlarged for viewing.

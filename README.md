@@ -7,13 +7,17 @@
 The [five-H100 scale experiment](docs/SCALE_V3.md) has prepared 5.688 million frames
 and verified cloud streaming. After the original workspace hit its spend limit,
 a newly authorized workspace passed an actual five-H100 training check. The full
-dataset transfer passed an exact index comparison, and full training is running there.
-The run has passed 50,000 of 60,000 planned steps. Intermediate validation previews
-show recognizable scenes and control responses, but turning and longer generated
-sequences remain unstable. The 50,000-step preview still loses objects and changes
-weapon appearance; it does not establish an improvement in sustained playability.
-The released results below describe v0.1.0;
-improved v3 quality is not yet established.
+dataset transfer passed an exact index comparison. Full training completed all
+60,000 steps in 3 hours 57 minutes. The final checkpoint, optimizer, random states,
+and agreement between all five GPUs have been verified. Validation previews show
+recognizable scenes and control responses, but turning and longer generated
+sequences remain unstable. Continuous 30-second control tests still lose objects
+and scene structure; more training steps did not establish sustained playability.
+The [September 10 demo upgrade](docs/DEMO_UPGRADE.md) combines an earlier checkpoint
+with a small motion model and separate Real-ESRGAN display upscaling. Two selected
+30-second sequences retain recognizable scenery with slower movement. A cloud
+A100 test delivered 15.4 fps. Firing and game mechanics remain approximate.
+The released results below describe the original v0.1.0.
 
 CounterDream learns recent frames + keyboard/mouse actions → next frame from Dust II
 gameplay. The viewer starts with four recorded seed frames. Every subsequent frame
@@ -58,6 +62,9 @@ Open **http://127.0.0.1:7860**, then **Connect & Play**. Move with WASD; turn wi
 arrow keys or mouse drag; fire with F or left click; jump with Space; reload with R;
 pause with Escape. Reset returns to the selected recorded starting view. Inputs
 are requests to the learned model, not guarantees of correctly simulated mechanics.
+The viewer includes adjustable look speed, fullscreen, smooth/pixel display, and
+a 30-second recording button. Recording saves the displayed session as a WebM;
+pausing or resetting ends it early.
 
 The downloader verifies pinned sizes and SHA-256 hashes. The playing checkpoint
 is about 39 MB. **Local play needs no API key, Modal account, or CS:GO installation.**
