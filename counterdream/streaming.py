@@ -132,7 +132,15 @@ def make_stream_proxy(metadata,get_remote):
     import websockets
     app=FastAPI(docs_url=None,redoc_url=None)
     static=Path(__file__).parent/"static"
-    connection={"active":False}
+    connection={"task":None,"startup":None}
+    handoff=asyncio.Lock()
+
+    async def destination():
+        # A refresh must not cancel a GPU that is still starting, or consume
+        # another paid start for the same connection attempt.
+        if connection['startup'] is None or connection['startup'].done():
+            connection['startup']=asyncio.create_task(get_remote())
+        return await asyncio.shield(connection['startup'])
 
     @app.get("/")
     def index():
@@ -153,6 +161,7 @@ def make_stream_proxy(metadata,get_remote):
     @app.websocket("/ws")
     async def play(ws:WebSocket):
         if ws.headers.get("origin","") not in ("","http://localhost:7860","http://127.0.0.1:7860"):
+            print('Stream handshake rejected: foreign origin',flush=True)
             await ws.close(code=1008)
             return
         try:
@@ -162,20 +171,31 @@ def make_stream_proxy(metadata,get_remote):
         except ValueError:
             await ws.close(code=1008)
             return
-        if connection["active"]:
-            await ws.close(code=1013)
-            return
-        connection["active"]=True
-        await ws.accept()
+        owner={'task':asyncio.current_task(),'closed':asyncio.Event()}
+        async with handoff:
+            previous=connection['task']
+            if previous is not None and not previous['closed'].is_set():
+                previous['task'].cancel()
+                try:
+                    await asyncio.wait_for(previous['closed'].wait(),timeout=5)
+                except TimeoutError:
+                    await ws.accept()
+                    await ws.send_json({'error':'Previous connection is closing. Reconnect in a moment.'})
+                    await ws.close(code=1013)
+                    return
+            connection['task']=owner
         tasks=[]
         try:
-            url,token=await get_remote()
+            # Include acceptance in cleanup: a browser can close during its
+            # handshake, before a frame-forwarding task exists.
+            await ws.accept()
+            url,token=await destination()
             parsed=urlparse(url)
             if parsed.scheme!="https" or not (parsed.hostname or "").endswith(".modal.host"):
                 raise ValueError("Unexpected tunnel destination")
             async with websockets.connect(url.replace("https://","wss://",1)+f"/ws?spawn={spawn}",
                                           additional_headers={"Authorization":"Bearer "+token},
-                                          open_timeout=45,max_size=2_000_000,max_queue=4) as remote:
+                                          open_timeout=45,close_timeout=1,max_size=2_000_000,max_queue=4) as remote:
                 async def controls():
                     while True:
                         raw=await ws.receive_text()
@@ -189,6 +209,9 @@ def make_stream_proxy(metadata,get_remote):
                             await ws.send_text(data)
                 tasks=[asyncio.create_task(controls()),asyncio.create_task(frames())]
                 await asyncio.wait(tasks,return_when=asyncio.FIRST_COMPLETED)
+        except asyncio.CancelledError:
+            # A newly accepted local connection takes over this handler.
+            pass
         except WebSocketDisconnect:
             pass
         except Exception as exc:
@@ -197,11 +220,13 @@ def make_stream_proxy(metadata,get_remote):
                 await ws.send_json({"error":str(exc) if isinstance(exc,AllocationEnded) else
                                    "Cloud stream stopped. Press Reconnect to try again."})
         finally:
-            connection["active"]=False
             for task in tasks:
                 task.cancel()
             if tasks:
                 await asyncio.gather(*tasks,return_exceptions=True)
             with suppress(Exception):
-                await ws.close()
+                await asyncio.wait_for(ws.close(),timeout=1)
+            if connection['task'] is owner:
+                connection['task']=None
+            owner['closed'].set()
     return app

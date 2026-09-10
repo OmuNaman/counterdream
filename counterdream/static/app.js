@@ -187,6 +187,8 @@ async function connect() {
     $("pause").disabled = true;
     $("reset").disabled = true;
     $("record").disabled = true;
+    if (!$("message").classList.contains("error"))
+      message("The connection ended. Press Reconnect to start from a saved view.");
   };
 }
 $("start").onclick = connect;

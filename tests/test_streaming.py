@@ -72,3 +72,44 @@ def test_live_metadata_sets_sampler_and_expired_allocation_explains_failure():
         assert info["recommended_steps"] == 8 and info["checkpoint_step"] == 34000
         with client.websocket_connect("/ws") as ws:
             assert "30-minute" in ws.receive_json()["error"]
+
+
+def test_refresh_replaces_old_connection_and_reuses_pending_gpu_start(monkeypatch):
+    import asyncio
+    import json
+    import threading
+    import websockets
+
+    starting, release = threading.Event(), threading.Event()
+    starts=[]
+    async def get_remote():
+        starts.append(1)
+        starting.set()
+        while not release.is_set():
+            await asyncio.sleep(.005)
+        return 'https://example.modal.host','x'*40
+
+    class Remote:
+        async def __aenter__(self):return self
+        async def __aexit__(self,*args):pass
+        async def send(self,raw):pass
+        async def messages(self):
+            yield json.dumps({'reset':True,'frame':0})
+            yield b'frame-from-existing-gpu'
+            await asyncio.Event().wait()
+        def __aiter__(self):return self.messages()
+
+    monkeypatch.setattr(websockets,'connect',lambda *args,**kwargs:Remote())
+    with TestClient(make_stream_proxy(dict(spawns=['One']),get_remote)) as client:
+        with client.websocket_connect('/ws') as old:
+            assert starting.wait(2)
+            # New browser connection arrives before the GPU has finished loading.
+            with client.websocket_connect('/ws') as fresh:
+                release.set()
+                assert fresh.receive_json()['reset']
+                assert fresh.receive_bytes()==b'frame-from-existing-gpu'
+                assert starts==[1]
+        # A later reconnect also works after both previous sockets have closed.
+        with client.websocket_connect('/ws') as later:
+            assert later.receive_json()['reset']
+            assert later.receive_bytes()==b'frame-from-existing-gpu'
