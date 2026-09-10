@@ -1,0 +1,14 @@
+[
+  {
+    "name": "strength0.35",
+    "strength": 0.35,
+    "frames": 320,
+    "spawn": 0
+  },
+  {
+    "name": "strength0.7",
+    "strength": 0.7,
+    "frames": 320,
+    "spawn": 0
+  }
+]

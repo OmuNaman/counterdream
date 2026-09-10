@@ -1,0 +1,47 @@
+{
+  "frames": 427,
+  "requested_fps": 24,
+  "spawn": 0,
+  "actual_seconds": 19.994960400043055,
+  "delivered_fps": 22.249925094187596,
+  "gpu_ms_median": 31.4,
+  "control_response_ms_median": 340.52349999547005,
+  "control_response_ms_p95": 654.0592999663204,
+  "video_playback_fps": 30,
+  "video_timing": "Wall-clock delivery; existing frames held until next arrival. No interpolation or time compression.",
+  "resets_after_initial_seed": 0,
+  "recorded_future_frames_injected": 0,
+  "info": {
+    "model": "CounterDream v3 / Dust II",
+    "device": "NVIDIA H100 80GB HBM3",
+    "spawns": [
+      "Val 1 / frame 120",
+      "Val 47 / frame 191",
+      "Val 93 / frame 262",
+      "Val 139 / frame 333",
+      "Val 185 / frame 404",
+      "Val 232 / frame 475"
+    ],
+    "checkpoint_step": 20000,
+    "context_frames": 8,
+    "resolution": [
+      160,
+      88
+    ],
+    "pretrained_weights": false,
+    "recommended_steps": 4,
+    "session_note": "Separate H100 \u00b7 pauses when unfocused \u00b7 GPU stops after 90 seconds idle \u00b7 30-minute allocation window",
+    "display_resolution": [
+      640,
+      352
+    ],
+    "display_note": "4\u00d7 Real-ESRGAN display enhancement; it cannot repair simulation drift.",
+    "quality_note": "Full-strength movement on H100. Firing remains weak and geometry can bend; reset when needed.",
+    "recommended_fps": 24,
+    "region": "odin",
+    "streaming": true,
+    "budget_frames": 12000,
+    "generated_frames": 0
+  },
+  "video_sha256": "85337ffaa0f1cf87bcb34d8a8a219c4d5291177b0ef819f0696b7dcbef730f93"
+}

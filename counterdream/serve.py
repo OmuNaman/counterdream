@@ -29,6 +29,7 @@ class Control(BaseModel):
     scope: bool = False
     spawn: int = Field(default=0, ge=0)
     steps: int = Field(default=8, ge=2, le=16)
+    fps: Literal[16, 24] = 16
 
 
 def png(frame):

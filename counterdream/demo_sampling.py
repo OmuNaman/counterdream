@@ -13,6 +13,7 @@ class SamplingOptions:
     context_noise: float = 0.0
     warm_start: bool = False
     initial_noise_scale: float = 1.0
+    fire_guidance: float = 1.0
 
 
 @torch.inference_mode()
@@ -25,6 +26,8 @@ def sample(model, context, actions, options, seed, initial_image=None):
         raise ValueError("Context noise outside trained range")
     if not 0 < options.initial_noise_scale <= 2:
         raise ValueError("Invalid initial noise scale")
+    if not 1 <= options.fire_guidance <= 4:
+        raise ValueError("Fire guidance must be in [1,4]")
     b, _, c, h, w = context.shape
     gen = torch.Generator(device=context.device).manual_seed(seed)
     noise = torch.randn((b, c, h, w), device=context.device, generator=gen)
@@ -48,16 +51,28 @@ def sample(model, context, actions, options, seed, initial_image=None):
         + ramp * (0.002 ** (1 / 7) - options.sigma_max ** (1 / 7))
     ) ** 7
     sigmas = torch.cat((sigmas, sigmas.new_zeros(1)))
+    # An explicit inference experiment: extrapolate the learned difference
+    # between fire-on and fire-off. This is not classifier-free training.
+    contrast = None
+    if options.fire_guidance != 1 and bool((actions[:, -1, 11] > 0.5).any()):
+        contrast = actions.clone()
+        contrast[:, -1, 11] = 0
+
+    def denoise(value, sigma):
+        clean = model(value, sigma.expand(b), conditioned, actions, sc)
+        if contrast is not None:
+            neutral = model(value, sigma.expand(b), conditioned, contrast, sc)
+            clean = neutral + options.fire_guidance * (clean - neutral)
+        return clean.clamp(-1, 1)
+
     for i in range(options.steps):
         current, following = sigmas[i], sigmas[i + 1]
-        clean = model(x, current.expand(b), conditioned, actions, sc).clamp(-1, 1)
+        clean = denoise(x, current)
         derivative = (x - clean) / current
         # Preserve the original Euler operation order for baseline compatibility.
         proposal = x + (following - current) * (x - clean) / current
         if options.solver == "heun" and i < options.steps - 1:
-            clean_next = model(
-                proposal, following.expand(b), conditioned, actions, sc
-            ).clamp(-1, 1)
+            clean_next = denoise(proposal, following)
             derivative_next = (proposal - clean_next) / following
             proposal = x + (following - current) * (derivative + derivative_next) / 2
         x = proposal

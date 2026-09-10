@@ -104,6 +104,11 @@ class SessionEngine:
             else:
                 predicted = self.model.sample(prior["context"],history,steps=control.steps,
                                               seed=1000+prior["frame"])
+        if control.fire and self.options and self.settings.get('weapon_refinement',0):
+            from .weapon_refine import refine_firing
+            with torch.autocast('cuda',dtype=torch.bfloat16):
+                predicted=refine_firing(self.model,prior['context'],history,predicted,self.options,
+                                        seed=1000+prior['frame'],strength=self.settings['weapon_refinement'])
         encoded = self.render(predicted)
         gpu_ms = (time.perf_counter()-tick)*1000
         prior["context"] = torch.cat((prior["context"][:,1:],predicted[:,None]),1)

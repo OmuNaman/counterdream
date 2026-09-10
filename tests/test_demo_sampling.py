@@ -23,6 +23,7 @@ def test_default_sampler_preserves_existing_generation():
         SamplingOptions(steps=1),
         SamplingOptions(context_noise=0.6),
         SamplingOptions(initial_noise_scale=0),
+        SamplingOptions(fire_guidance=5),
     ],
 )
 def test_invalid_profiles_rejected_before_inference(options):
@@ -44,3 +45,26 @@ def test_noisy_context_repeatable_and_bounded():
     assert torch.isfinite(first).all() and first.abs().max() <= 1
     changed = sample(Denoiser(), context, torch.zeros_like(actions), options, 33)
     assert (first - changed).abs().mean() > 0.05
+
+
+def test_fire_contrast_changes_only_firing_and_preserves_other_controls():
+    class Denoiser:
+        def __call__(self, x, sigma, context, actions, context_sigma):
+            return (
+                context[:, -1] * 0
+                + actions[:, -1, 11, None, None, None] * 0.1
+                + actions[:, -1, 0, None, None, None] * 0.2
+            )
+
+    context = torch.zeros(1, 4, 3, 8, 8)
+    actions = torch.zeros(1, 4, 51)
+    actions[:, -1, 0] = 1
+    from dataclasses import replace
+
+    basic = SamplingOptions(steps=4)
+    boosted = replace(basic, fire_guidance=2.5)
+    idle = sample(Denoiser(), context, actions, basic, 33)
+    torch.testing.assert_close(sample(Denoiser(), context, actions, boosted, 33), idle)
+    actions[:, -1, 11] = 1
+    fire = sample(Denoiser(), context, actions, boosted, 33)
+    torch.testing.assert_close(fire, torch.full_like(fire, 0.45))

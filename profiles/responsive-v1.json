@@ -1,0 +1,17 @@
+{
+  "sampling": {
+    "steps": 4,
+    "sigma_max": 0.3,
+    "solver": "euler",
+    "context_noise": 0.03,
+    "warm_start": true,
+    "initial_noise_scale": 1.0,
+    "fire_guidance": 1.0
+  },
+  "motion_checkpoint": "motion.pt",
+  "motion_only": false,
+  "motion_scale": 1.0,
+  "note": "Full-strength action-dependent motion; subtracts predicted idle drift. Firing remains weak.",
+  "upscaler": "upscaler.pth",
+  "motion_center": true
+}

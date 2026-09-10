@@ -19,7 +19,8 @@ class Engine:
         return dict(png=b"example-frame", frame=sequence-1, gpu_ms=25)
 
 
-def test_authenticated_stream_generates_without_per_frame_requests_and_stops():
+@pytest.mark.parametrize('fps',[16,24])
+def test_authenticated_stream_generates_without_per_frame_requests_and_stops(fps):
     engine = Engine()
     app = make_gpu_stream(engine, "x"*40, {"last": time.monotonic()}, frame_budget=3)
     with TestClient(app) as client:
@@ -27,7 +28,7 @@ def test_authenticated_stream_generates_without_per_frame_requests_and_stops():
             assert ws.receive_json()["reset"]
             assert ws.receive_bytes() == b"example-frame"
             # One control produces several frames without a response/request cycle.
-            ws.send_json(dict(type="step", keys=["w"], dx=30, steps=4))
+            ws.send_json(dict(type="step", keys=["w"], dx=30, steps=4, fps=fps))
             for remaining in (2, 1, 0):
                 assert ws.receive_json()["remaining"] == remaining
                 assert ws.receive_bytes() == b"example-frame"
@@ -36,6 +37,7 @@ def test_authenticated_stream_generates_without_per_frame_requests_and_stops():
     assert [call[2] for call in engine.calls] == [1, 2, 3, 4]
     assert [call[1]["dx"] for call in engine.calls[1:]] == [30, 0, 0]
     assert all(call[1]["keys"] == ["w"] for call in engine.calls[1:])
+    assert all(call[1]['fps'] == fps for call in engine.calls[1:])
     assert not engine.sessions
 
 

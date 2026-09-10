@@ -1,0 +1,50 @@
+[
+  {
+    "name": "spawn0-sigma0.3",
+    "spawn": 0,
+    "sigma_max": 0.3,
+    "frames": 64
+  },
+  {
+    "name": "spawn0-sigma0.7",
+    "spawn": 0,
+    "sigma_max": 0.7,
+    "frames": 64
+  },
+  {
+    "name": "spawn0-sigma1.5",
+    "spawn": 0,
+    "sigma_max": 1.5,
+    "frames": 64
+  },
+  {
+    "name": "spawn0-sigma20.0",
+    "spawn": 0,
+    "sigma_max": 20.0,
+    "frames": 64
+  },
+  {
+    "name": "spawn4-sigma0.3",
+    "spawn": 4,
+    "sigma_max": 0.3,
+    "frames": 64
+  },
+  {
+    "name": "spawn4-sigma0.7",
+    "spawn": 4,
+    "sigma_max": 0.7,
+    "frames": 64
+  },
+  {
+    "name": "spawn4-sigma1.5",
+    "spawn": 4,
+    "sigma_max": 1.5,
+    "frames": 64
+  },
+  {
+    "name": "spawn4-sigma20.0",
+    "spawn": 4,
+    "sigma_max": 20.0,
+    "frames": 64
+  }
+]

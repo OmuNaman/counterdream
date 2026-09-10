@@ -84,7 +84,7 @@ Local play needs no Modal key. For the same bundle on a separate, bounded A100:
 python -m pip install -e '.[cloud]'
 modal setup
 modal volume put counterdream-artifacts-v1 artifacts/demo-bundle runs/dust2-v3-full/demo-upgrade-v1
-modal run cloud_stream.py::play --variant demo
+COUNTERDREAM_GPU=A100 modal run cloud_stream.py::play --variant demo
 ```
 
 GPU allocation begins on browser connection. It stops after 90 idle seconds and

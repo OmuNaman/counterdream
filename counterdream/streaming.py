@@ -112,7 +112,7 @@ def make_gpu_stream(engine,token,activity,frame_budget=12000):
                     await ws.send_json(dict(frame=result["frame"],gpu_ms=result["gpu_ms"],
                                             control_seq=control_seq,remaining=frame_budget-total["frames"]))
                     await ws.send_bytes(result["png"])
-                await asyncio.sleep(max(.001,1/16-(time.monotonic()-tick)))
+                await asyncio.sleep(max(.001,1/state['control'].fps-(time.monotonic()-tick)))
         except WebSocketDisconnect:
             pass
         finally:

@@ -1,6 +1,7 @@
 """Bounded direct TLS stream. Authentication material stays in process memory."""
 import asyncio
 import json
+import os
 from pathlib import Path
 import modal
 
@@ -8,7 +9,9 @@ from counterdream.cloud_config import gpu_base_image,volume,PILOT,RUN,DATA
 from counterdream.live_checkpoint import snapshot_folder
 
 app=modal.App("counterdream-stream")
-GPU_TYPE="A100"
+GPU_TYPE=os.getenv("COUNTERDREAM_GPU","H100")
+if GPU_TYPE not in ("A100","H100","H200"):
+    raise ValueError("COUNTERDREAM_GPU must be A100, H100 or H200")
 image=gpu_base_image.pip_install("websockets==15.0.1").add_local_python_source("counterdream")
 
 
@@ -23,12 +26,14 @@ def prepare_latest(snapshot:str):
 
 
 @app.function(image=image,cpu=2,memory=2048,timeout=180,retries=0,volumes={'/artifacts':volume})
-def prepare_demo():
+def prepare_demo(variant:str="demo"):
     """Reuse existing validated20k weights; uploaded bundle fixes every checksum."""
     import shutil
     from counterdream.live_checkpoint import sha256
     volume.reload()
-    folder=artifact_folder('demo')
+    if variant not in ('demo','responsive'):
+        raise ValueError('Expected a demo bundle variant')
+    folder=artifact_folder(variant)
     manifest=json.loads((folder/'bundle.json').read_text())
     source=Path(RUN,'evaluation-val-8-step-20000')
     for name in ('model.pt','seeds.npz'):
@@ -43,8 +48,8 @@ def prepare_demo():
 
 
 @app.local_entrypoint()
-def demo_ready():
-    print(json.dumps(prepare_demo.remote()),flush=True)
+def demo_ready(variant:str="demo"):
+    print(json.dumps(prepare_demo.remote(variant)),flush=True)
 
 
 def artifact_folder(variant,snapshot=""):
@@ -56,7 +61,9 @@ def artifact_folder(variant,snapshot=""):
         return Path(PILOT,"evaluation-val-4")
     if variant=="demo":
         return Path(RUN,"demo-upgrade-v1")
-    raise ValueError("Choose latest, full, pilot or demo")
+    if variant=="responsive":
+        return Path(RUN,"demo-responsive-v1")
+    raise ValueError("Choose latest, full, pilot, demo or responsive")
 
 
 @app.function(image=image,gpu=GPU_TYPE,cpu=4,memory=16384,
@@ -82,13 +89,13 @@ def stream_server(queue,token:str,variant:str="full",snapshot:str="",deadline_un
         report=json.loads((folder/"preview.json").read_text())
         if sha256(folder/"model.pt")!=report["export_sha256"] or sha256(folder/"seeds.npz")!=report["seeds_sha256"]:
             raise ValueError("Live snapshot integrity check failed")
-    if variant=="demo":
+    if variant in ("demo","responsive"):
         from counterdream.live_checkpoint import sha256
         manifest=json.loads((folder/'bundle.json').read_text())
         for name,digest in manifest['files'].items():
             if Path(name).name!=name or sha256(folder/name)!=digest:
                 raise ValueError('Demo bundle integrity check failed')
-    engine=SessionEngine(folder/"model.pt",folder/"seeds.npz",folder/'profile.json' if variant=='demo' else None)
+    engine=SessionEngine(folder/"model.pt",folder/"seeds.npz",folder/'profile.json' if variant in ('demo','responsive') else None)
     if variant=="latest" and engine.checkpoint["step"]!=report["checkpoint_step"]:
         raise ValueError("Live snapshot step mismatch")
     # Warm kernels before the first playable frame, then discard the warmup state.
@@ -111,7 +118,7 @@ def stream_server(queue,token:str,variant:str="full",snapshot:str="",deadline_un
                     raise RuntimeError("Stream server did not start")
                 await asyncio.sleep(.1)
             await queue.put.aio(dict(url=tunnel.url,region=os.getenv("MODAL_REGION","unknown"),
-                                    checkpoint_step=engine.checkpoint["step"],launch_id=launch_id))
+                                    gpu=torch.cuda.get_device_name(),checkpoint_step=engine.checkpoint["step"],launch_id=launch_id))
             print(json.dumps(dict(event="stream_ready",checkpoint_step=engine.checkpoint["step"],
                                   region=os.getenv("MODAL_REGION","unknown"),gpu=torch.cuda.get_device_name(),
                                   deadline_unix=deadline)),flush=True)
@@ -145,7 +152,7 @@ def probe():
 
 
 @app.local_entrypoint()
-def play(variant: str = "full", snapshot_id: str = ""):
+def play(variant: str = "full", snapshot_id: str = "", deadline_unix: float = 0.):
     import secrets
     import time
     import uuid
@@ -167,7 +174,7 @@ def play(variant: str = "full", snapshot_id: str = ""):
         print(json.dumps(dict(event="live_snapshot",**report)),flush=True)
     else:
         volume_folder=folder.relative_to("/artifacts").as_posix()
-        report=json.loads(b"".join(volume.read_file(volume_folder+("/bundle.json" if variant=='demo' else "/evaluation.json"))))
+        report=json.loads(b"".join(volume.read_file(volume_folder+("/bundle.json" if variant in ('demo','responsive') else "/evaluation.json"))))
         import io
         import numpy as np
         with np.load(io.BytesIO(b"".join(volume.read_file(volume_folder+"/seeds.npz"))),allow_pickle=False) as seeds:
@@ -177,9 +184,10 @@ def play(variant: str = "full", snapshot_id: str = ""):
                   resolution=[report["config"]["width"],report["config"]["height"]],pretrained_weights=False,
                   recommended_steps=8 if variant in ("latest","demo") else 4,
                   session_note=f"Separate {GPU_TYPE} · pauses when unfocused · GPU stops after 90 seconds idle · 30-minute allocation window")
-    if variant=='demo':
+    if variant in ('demo','responsive'):
         metadata.update(recommended_steps=report['sampling_steps'],display_resolution=report['display_resolution'],
                         display_note=report['display_note'],quality_note=report['quality_note'])
+    metadata['recommended_fps']=24 if variant=='responsive' else 16
     token=secrets.token_urlsafe(32)
     with modal.Queue.ephemeral() as queue:
         async def start(remaining):
@@ -203,8 +211,12 @@ def play(variant: str = "full", snapshot_id: str = ""):
         async def cancel(call):
             await call.cancel.aio()
         lease=StreamLease(start,call_is_running,cancel)
+        if deadline_unix:
+            # A software restart can retain the original paid-window deadline.
+            lease.deadline=time.monotonic()+max(0,min(1800,deadline_unix-time.time()))
         async def get_remote():
             destination=await lease.get()
+            metadata.update(device=destination.get('gpu',f'Cloud {GPU_TYPE}'),region=destination['region'])
             return destination["url"],token
         try:
             uvicorn.run(make_stream_proxy(metadata,get_remote),host="127.0.0.1",port=7860)

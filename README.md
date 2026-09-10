@@ -17,6 +17,10 @@ The [September 10 demo upgrade](docs/DEMO_UPGRADE.md) combines an earlier checkp
 with a small motion model and separate Real-ESRGAN display upscaling. Two selected
 30-second sequences retain recognizable scenery with slower movement. A cloud
 A100 test delivered 15.4 fps. Firing and game mechanics remain approximate.
+The [H100 preview](docs/H100_PREVIEW.md) restores stronger movement and adds a
+24 fps target; two live captures delivered 22.2–23.7 fps. Firing is still weak,
+and faster movement can distort the scene sooner. Recordings and limitations
+are included in the [H100 release](https://github.com/OmuNaman/counterdream/releases/tag/v0.3.1-h100).
 The released results below describe the original v0.1.0.
 
 CounterDream learns recent frames + keyboard/mouse actions → next frame from Dust II

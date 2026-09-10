@@ -12,6 +12,7 @@ let ws = null,
   lastRequest = 0,
   streaming = false,
   qualityChosen = false,
+  paceChosen = false,
   streamReady = false,
   lastFrameAt = 0,
   timer = null;
@@ -60,7 +61,7 @@ function pause() {
 function request() {
   if (!playing || (streaming ? !streamReady : busy) || ws?.readyState !== WebSocket.OPEN) return;
   if (ws.bufferedAmount > 4096) {
-    if (streaming) timer = setTimeout(request, 62.5);
+    if (streaming) timer = setTimeout(request, 1000 / Number($("pace").value));
     return;
   }
   const speed = Number($("turn-speed").value);
@@ -76,12 +77,13 @@ function request() {
       dy: Math.max(-200, Math.min(200, my)),
       fire: fire || keys.has("KeyF"),
       steps: Number($("quality").value),
+      fps: Number($("pace").value),
     }),
   );
   dx = dy = 0;
   busy = !streaming;
   lastRequest = performance.now();
-  if (streaming) timer = setTimeout(request, 62.5);
+  if (streaming) timer = setTimeout(request, 1000 / Number($("pace").value));
 }
 function resume() {
   clearTimeout(timer);
@@ -164,7 +166,7 @@ async function connect() {
     } else if (playing)
       timer = setTimeout(
         request,
-        Math.max(0, 62.5 - (performance.now() - lastRequest)),
+        Math.max(0, 1000 / Number($("pace").value) - (performance.now() - lastRequest)),
       );
   };
   ws.onerror = () => {
@@ -189,6 +191,7 @@ async function connect() {
 }
 $("start").onclick = connect;
 $("quality").onchange = () => { qualityChosen = true; };
+$("pace").onchange = () => { paceChosen = true; };
 $("display-mode").onchange = () => {
   canvas.style.imageRendering = $("display-mode").value === 'pixelated' ? 'pixelated' : 'auto';
 };
@@ -206,7 +209,7 @@ $("record").onclick = () => {
   try {
     const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(type => MediaRecorder.isTypeSupported(type));
     if (!mimeType) throw new Error('No supported recorder');
-    recordingStream = canvas.captureStream(16);
+    recordingStream = canvas.captureStream(Number($("pace").value));
     recorder = new MediaRecorder(recordingStream, {mimeType, videoBitsPerSecond: 4000000});
     const chunks = [], firstFrame = frame;
     recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
@@ -291,6 +294,8 @@ function loadInfo() {
   .then((r) => r.json())
   .then((info) => {
     streaming = Boolean(info.streaming);
+    if (info.recommended_fps && !playing && !paceChosen)
+      $("pace").value = String(info.recommended_fps);
     if (info.recommended_steps && !playing && !qualityChosen)
       $("quality").value = String(info.recommended_steps);
     $("spawn").replaceChildren(
