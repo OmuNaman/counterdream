@@ -1,14 +1,15 @@
 import numpy as np
+import pytest
 from fastapi.testclient import TestClient
 from counterdream.serve import make_app
 
 
-def app_for_test(tmp_path, budget=2):
+def app_for_test(tmp_path, budget=2, shape=(4,64,112,3)):
     seeds = tmp_path / "seeds.npz"
     np.savez(
         seeds,
-        frames=np.zeros((1, 4, 64, 112, 3), np.uint8),
-        actions=np.zeros((1, 3, 51), np.float32),
+        frames=np.zeros((1,*shape), np.uint8),
+        actions=np.zeros((1,shape[0]-1,51), np.float32),
         names=np.array(["Test seed"]),
     )
     seen = []
@@ -20,11 +21,13 @@ def app_for_test(tmp_path, budget=2):
     return make_app(seeds, predict, max_generated_frames=budget), seen
 
 
-def test_viewer_feeds_predictions_back_and_limits_calls(tmp_path):
-    app, seen = app_for_test(tmp_path)
+@pytest.mark.parametrize("shape",[(4,64,112,3),(8,88,160,3)])
+def test_viewer_feeds_predictions_back_and_limits_calls(tmp_path,shape):
+    app, seen = app_for_test(tmp_path,shape=shape)
     with TestClient(app) as client:
         assert client.get("/").status_code == 200
         assert client.get("/api/info").json()["budget_frames"] == 2
+        assert client.get("/api/info").json()["resolution"] == [shape[2],shape[1]]
         with client.websocket_connect("/ws") as ws:
             assert ws.receive_bytes().startswith(b"\x89PNG")
             for i in range(2):

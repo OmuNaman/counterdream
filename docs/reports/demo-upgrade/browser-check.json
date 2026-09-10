@@ -1,0 +1,15 @@
+{
+  "file": "counterdream-session-frames-321-690.webm",
+  "bytes": 3609442,
+  "size": [
+    640,
+    352
+  ],
+  "duration_seconds": 29.87,
+  "browser_recording": true,
+  "auto_stop_observed": true,
+  "fullscreen_enter_exit_checked": true,
+  "pause_reset_checked": true,
+  "decoded_frames": 357,
+  "duration_method": "Decoded video timestamps; MediaRecorder WebM lacks duration header"
+}

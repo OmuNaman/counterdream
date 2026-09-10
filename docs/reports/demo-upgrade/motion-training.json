@@ -1,0 +1,11 @@
+{
+  "step": 5000,
+  "seconds": 45.398721222,
+  "best_validation_mse": 0.009937071241438389,
+  "train_samples": 3616,
+  "internal_holdout_samples": 480,
+  "split": "Only original training records; internal holdout grouped by source episode",
+  "parameters": 258533,
+  "gpu": "NVIDIA A100-SXM4-40GB",
+  "peak_gpu_gb": 1.2956032
+}

@@ -16,6 +16,9 @@ were checked against DIAMOND's CS:GO implementation.
 - Eloi Alonso et al. *Diffusion for World Modeling: Visual Details Matter in Atari*,
   NeurIPS 2024. [DIAMOND](https://github.com/eloialonso/diamond/tree/csgo), MIT.
   Reference checkout: `851cefb497733d27f1b85c804104638765860fca`.
+  The v3 experiment copies its test-file list into `counterdream/assets/` to
+  exclude the same published holdout episodes. The accompanying upstream MIT
+  license is included there. No upstream model weights are loaded.
 - Tero Karras et al. *Elucidating the Design Space of Diffusion-Based Generative
   Models*, NeurIPS 2022. [Paper](https://arxiv.org/abs/2206.00364).
 

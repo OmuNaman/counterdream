@@ -1,0 +1,30 @@
+{
+  "samples": 4096,
+  "split": "train",
+  "seed": 7102026,
+  "flow_method": "OpenCV DIS medium, next-to-previous",
+  "dataset_index_sha256": "7045b9e86beec3851cbd6b214147cc0fd694c8844d90325d8195ef2323996915",
+  "files": {
+    "observations.npy": {
+      "bytes": 519045248,
+      "sha256": "ac6587b3bb7d227c833ed6cd7998ad75b88a8091f16d54bc7a2e82efdfd48640"
+    },
+    "actions.npy": {
+      "bytes": 1671296,
+      "sha256": "866b28b1854b088aacf2ecb2f82d9dbbe15c0eac2e9f150e09391c5aad702457"
+    },
+    "flows.npy": {
+      "bytes": 230686848,
+      "sha256": "707c3ba4b27f293fecdf95438670d4e52885b1bbbf60ebd84bc18eaaadae433a"
+    },
+    "confidence.npy": {
+      "bytes": 57671808,
+      "sha256": "4b0de056abfdc2e7afeb37f1256c6f642fc6ab2897c839fa7682a41578cc558a"
+    },
+    "samples.json": {
+      "bytes": 304156,
+      "sha256": "2e4725840cbe52c9050c023e344325133ec02a789a3b2a6be0d30112461d2405"
+    }
+  },
+  "seconds": 70.66310109099999
+}

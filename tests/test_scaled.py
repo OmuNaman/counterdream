@@ -1,0 +1,142 @@
+import json
+from pathlib import Path
+import numpy as np
+import torch
+
+from counterdream.model import ModelConfig, WorldModel
+from counterdream.scaled_data import DiskReplay, GPUShardReplay, episode_split, build_index, replay_weights
+from counterdream.train_distributed import SequenceObjective
+
+
+def test_published_test_files_never_enter_training():
+    heldout = {"hdf5_dm_july2021_1.hdf5", "hdf5_dm_july2021_2.hdf5"}
+    for name in heldout:
+        assert episode_split(name, heldout) == "test"
+    assert episode_split("anything.hdf5", heldout) == episode_split("anything.hdf5", heldout)
+
+
+def test_identical_duplicate_archive_members_are_counted_once(tmp_path):
+    for name in ("one","two"):
+        folder=tmp_path/name
+        folder.mkdir()
+        record=dict(source="same.hdf5",sha256="same-content",file="frames.npy",actions="actions.npy",frames=1000,split="train")
+        (folder/"manifest.json").write_text(json.dumps(dict(shard=name,complete=True,episodes=[record])))
+    report=build_index(tmp_path)
+    assert report["counts"]["train"]==1000
+    assert report["identical_duplicates_skipped"]==["same.hdf5"]
+
+
+def test_expert_sampling_keeps_coverage_and_adds_clean_examples():
+    records=[dict(action_counts=[0]*13,expert=i==0) for i in range(100)]
+    weights=replay_weights(records)
+    assert abs(weights.sum()-1)<1e-12
+    assert weights[0]>.15
+    assert (weights[1:]>0).all()
+
+
+def test_partition_resume_reuses_original_files_without_double_counting(tmp_path,monkeypatch):
+    import io
+    import tarfile
+    from counterdream import scaled_data
+    shard="hdf5_dm_july2021_1_to_200.tar"
+    old=tmp_path/shard.removesuffix(".tar")
+    old.mkdir()
+    records=[]
+    payload=io.BytesIO()
+    with tarfile.open(fileobj=payload,mode="w") as archive:
+        for i in range(4):
+            name=f"hdf5_dm_july2021_{i}.hdf5"
+            member=tarfile.TarInfo(name)
+            member.size=1
+            archive.addfile(member,io.BytesIO(b"x"))
+            (old/f"{i}.npy").write_bytes(b"preserved")
+            records.append(dict(source=name,sha256=f"hash-{i}",file=f"{i}.npy",actions=f"{i}.npy",
+                                frames=1000,split="train",action_counts=[0]*13))
+    (old/"manifest.json").write_text(json.dumps(dict(shard=shard,complete=False,episodes=records,superseded_by="parts",
+        dataset=scaled_data.DATASET,revision=scaled_data.REVISION,height=88,width=160,format="npy-rgb-uint8",
+        test_split_sha256=scaled_data.hashlib.sha256(b"").hexdigest())))
+    monkeypatch.setattr(scaled_data,"HTTPRangeReader",lambda url:io.BytesIO(payload.getvalue()))
+    for part in range(4):
+        result=scaled_data.prepare_shard(tmp_path,shard,set(),part=part,parts=4)
+        assert result["complete"] and len(result["episodes"])==1
+    index=build_index(tmp_path)
+    assert index["counts"]["train"]==4000
+    assert len(index["shards"])==4 and not index["identical_duplicates_skipped"]
+    for record in index["episodes"]:
+        assert (tmp_path/record["file"]).read_bytes()==b"preserved"
+        assert ".." not in Path(record["file"]).parts
+
+
+def test_verified_zip_entries_with_truncated_hdf5_are_excluded_and_recorded(tmp_path,monkeypatch):
+    import io
+    import zipfile
+    import h5py
+    from counterdream import scaled_data
+    hdf=io.BytesIO()
+    with h5py.File(hdf,"w") as stream:
+        stream.create_dataset("data",data=np.arange(100))
+    truncated=hdf.getvalue()[:-33]
+    packed=io.BytesIO()
+    with zipfile.ZipFile(packed,"w") as archive:
+        for i in range(190):
+            archive.writestr(f"expert/record-{i}.hdf5",truncated)
+    monkeypatch.setattr(scaled_data,"RemoteZipReader",lambda url,size:io.BytesIO(packed.getvalue()))
+    result=scaled_data.prepare_expert(tmp_path,part=0,parts=8)
+    assert result["complete"] and not result["episodes"]
+    assert len(result["excluded"])==24
+    assert all(r["source_bytes"]==len(truncated) and "CRC verified" in r["reason"] for r in result["excluded"])
+    report=build_index(tmp_path)
+    assert report["counts"]["train"]==0 and len(report["excluded_source_files"])==24
+
+
+def test_disk_replay_causality_and_bounded_open_episodes(tmp_path,monkeypatch):
+    records = []
+    for i in range(4):
+        frames = np.zeros((24, 3, 8, 8), dtype=np.uint8)
+        frames[:, 0] = i * 40
+        frames[:, 1] = np.arange(24)[:, None, None]
+        acts = np.repeat(np.arange(24)[:, None], 51, 1).astype(np.float32)
+        np.save(tmp_path / f"{i}.frames.npy", frames)
+        np.save(tmp_path / f"{i}.actions.npy", acts)
+        records.append(dict(file=f"{i}.frames.npy", actions=f"{i}.actions.npy", split="train",
+                            action_counts=[0]*13, frames=24))
+    (tmp_path / "index.json").write_text(json.dumps(dict(episodes=records,height=8,width=8)))
+    replay = DiskReplay(tmp_path, context=8, cache_size=2)
+    obs, acts = replay.batch_numpy(50, np.random.default_rng(17), horizon=4)
+    assert len(replay.cache) <= 2
+    assert obs.shape == (50, 12, 3, 8, 8)
+    for frames, actions in zip(obs, acts):
+        assert (frames[:, 0] == frames[0, 0]).all()
+        np.testing.assert_array_equal(frames[:-1, 1, 0, 0], actions[:, 0])
+        np.testing.assert_array_equal(np.diff(frames[:, 1, 0, 0].astype(int)), np.ones(11))
+    monkeypatch.setattr(torch.cuda,"mem_get_info",lambda device:(100_000_000_000,100_000_000_000))
+    shards=[GPUShardReplay(tmp_path,rank,2,"cpu") for rank in range(2)]
+    assert {r["file"] for r in shards[0].records}.isdisjoint(r["file"] for r in shards[1].records)
+    assert sum(len(s.records) for s in shards)==len(records)
+    for shard in shards:
+        frames,actions = shard.batch_device(20,np.random.default_rng(123),horizon=4)
+        original = (frames+1)*127.5
+        torch.testing.assert_close(original[:,:-1,1,0,0],actions[:,:,0],atol=1e-4,rtol=0)
+
+
+def test_unrolled_objective_trains_and_uses_generated_context():
+    torch.set_num_threads(2)
+    torch.manual_seed(3)
+    model = WorldModel(ModelConfig(height=16, width=24, context=8, base=8, cond_dim=32, version=3))
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    obs = torch.rand(2, 11, 3, 16, 24)*2-1
+    acts = torch.rand(2, 10, 51)
+    for _ in range(3):
+        optimizer.zero_grad()
+        SequenceObjective(model)(obs, acts).backward()
+        optimizer.step()
+    optimizer.zero_grad()
+    observed = []
+    hook = model.register_forward_pre_hook(lambda module, args: observed.append(args[2].detach().clone()))
+    loss = SequenceObjective(model)(obs, acts)
+    loss.backward()
+    hook.remove()
+    assert torch.isfinite(loss)
+    assert model.action_emb[0].weight.grad.abs().sum() > 0
+    assert len(observed) == 3
+    assert not torch.allclose(observed[1][:, -1], obs[:, 8])

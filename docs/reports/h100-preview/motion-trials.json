@@ -1,0 +1,126 @@
+[
+  {
+    "name": "centered-1",
+    "frames": 320,
+    "spawn": 0,
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "region": "CANADA-2",
+    "gpu_ms_median": 31.4,
+    "generation_seconds": 13.490530138999999,
+    "video_playback_fps": 16,
+    "real_time_stream": false,
+    "resets_after_initial_seed": 0,
+    "model_sha256": "21019b9599251ff86f5d0b549689415d7b54e782ed883558592030db254ade4a",
+    "profile": {
+      "sampling": {
+        "steps": 4,
+        "sigma_max": 0.3,
+        "solver": "euler",
+        "context_noise": 0.03,
+        "warm_start": true,
+        "initial_noise_scale": 1.0,
+        "fire_guidance": 1.0
+      },
+      "motion_checkpoint": "/artifacts/runs/dust2-v3-full/demo-upgrade-v1/motion.pt",
+      "motion_only": false,
+      "motion_scale": 1.0,
+      "note": "Stabilized demo candidate: learned motion magnitude35percent, diffusiondenoising retained; no resets or future recorded frames.",
+      "upscaler": "/artifacts/runs/dust2-v3-full/demo-upgrade-v1/upscaler.pth",
+      "motion_center": true
+    },
+    "video_sha256": "730e3ab3bddfa11f2c10ae8d383d35c084bdb50edf05dfb75e78388210bcdbe9"
+  },
+  {
+    "name": "centered-1p5",
+    "frames": 320,
+    "spawn": 0,
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "region": "CANADA-2",
+    "gpu_ms_median": 31.0,
+    "generation_seconds": 12.468431116999998,
+    "video_playback_fps": 16,
+    "real_time_stream": false,
+    "resets_after_initial_seed": 0,
+    "model_sha256": "21019b9599251ff86f5d0b549689415d7b54e782ed883558592030db254ade4a",
+    "profile": {
+      "sampling": {
+        "steps": 4,
+        "sigma_max": 0.3,
+        "solver": "euler",
+        "context_noise": 0.03,
+        "warm_start": true,
+        "initial_noise_scale": 1.0,
+        "fire_guidance": 1.0
+      },
+      "motion_checkpoint": "/artifacts/runs/dust2-v3-full/demo-upgrade-v1/motion.pt",
+      "motion_only": false,
+      "motion_scale": 1.5,
+      "note": "Stabilized demo candidate: learned motion magnitude35percent, diffusiondenoising retained; no resets or future recorded frames.",
+      "upscaler": "/artifacts/runs/dust2-v3-full/demo-upgrade-v1/upscaler.pth",
+      "motion_center": true
+    },
+    "video_sha256": "8b5d1229962fc6b5e701b3c2638ba9bad6ceae3476ab56fd69dcbb969e8f9c9d"
+  },
+  {
+    "name": "centered-fire",
+    "frames": 320,
+    "spawn": 0,
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "region": "CANADA-2",
+    "gpu_ms_median": 32.0,
+    "generation_seconds": 14.682027168999994,
+    "video_playback_fps": 16,
+    "real_time_stream": false,
+    "resets_after_initial_seed": 0,
+    "model_sha256": "21019b9599251ff86f5d0b549689415d7b54e782ed883558592030db254ade4a",
+    "profile": {
+      "sampling": {
+        "steps": 4,
+        "sigma_max": 0.3,
+        "solver": "euler",
+        "context_noise": 0.03,
+        "warm_start": true,
+        "initial_noise_scale": 1.0,
+        "fire_guidance": 2.5
+      },
+      "motion_checkpoint": "/artifacts/runs/dust2-v3-full/demo-upgrade-v1/motion.pt",
+      "motion_only": false,
+      "motion_scale": 1.0,
+      "note": "Stabilized demo candidate: learned motion magnitude35percent, diffusiondenoising retained; no resets or future recorded frames.",
+      "upscaler": "/artifacts/runs/dust2-v3-full/demo-upgrade-v1/upscaler.pth",
+      "motion_center": true
+    },
+    "video_sha256": "1f4444d0cce9beab810717e1d78d6da1558222bb5abfacb5da2c96bb822244e4"
+  },
+  {
+    "name": "uncentered-0p7",
+    "frames": 320,
+    "spawn": 0,
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "region": "CANADA-2",
+    "gpu_ms_median": 30.1,
+    "generation_seconds": 12.471480635999995,
+    "video_playback_fps": 16,
+    "real_time_stream": false,
+    "resets_after_initial_seed": 0,
+    "model_sha256": "21019b9599251ff86f5d0b549689415d7b54e782ed883558592030db254ade4a",
+    "profile": {
+      "sampling": {
+        "steps": 4,
+        "sigma_max": 0.3,
+        "solver": "euler",
+        "context_noise": 0.03,
+        "warm_start": true,
+        "initial_noise_scale": 1.0,
+        "fire_guidance": 1.0
+      },
+      "motion_checkpoint": "/artifacts/runs/dust2-v3-full/demo-upgrade-v1/motion.pt",
+      "motion_only": false,
+      "motion_scale": 0.7,
+      "note": "Stabilized demo candidate: learned motion magnitude35percent, diffusiondenoising retained; no resets or future recorded frames.",
+      "upscaler": "/artifacts/runs/dust2-v3-full/demo-upgrade-v1/upscaler.pth",
+      "motion_center": false
+    },
+    "video_sha256": "611d096fe7a43c0940994ff2c85a1817877b22c0c4a53656df75c35b4fe36fb7"
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "samples": 5760,
+  "frames_per_window": 10,
+  "expert_episodes": 176,
+  "other_episodes": 64,
+  "split": "train",
+  "seed": 9102026,
+  "dataset_index_sha256": "7045b9e86beec3851cbd6b214147cc0fd694c8844d90325d8195ef2323996915",
+  "seconds": 346.637715114
+}

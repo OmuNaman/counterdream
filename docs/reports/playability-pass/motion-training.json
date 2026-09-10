@@ -1,0 +1,11 @@
+{
+  "step": 10000,
+  "seconds": 328.540098552,
+  "best_rollout_mse": 0.019652793556451796,
+  "parameters": 1115509,
+  "train_windows": 4968,
+  "validation_windows": 128,
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "selection": "mean internal holdout MSE at horizons 4 through 8; grouped by source episode",
+  "model_sha256": "820637aff41cc2dc3c0bb09954dc396f37ebe82ea794bfe370bb8a4a3d3fa2c0"
+}

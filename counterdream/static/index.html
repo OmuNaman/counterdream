@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>CounterDream — Neural CS:GO</title>
-    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/style.css?v=0.4.1" />
   </head>
   <body>
     <main>
@@ -35,6 +35,7 @@
             aria-label="Neural game viewport"
           >
             <canvas id="canvas" width="112" height="64"></canvas>
+            <button id="exit-fullscreen">EXIT FULLSCREEN</button>
             <div class="reticle"></div>
             <div class="screen-label">
               <span>DUST II</span><span>NEURAL SIMULATION</span>
@@ -50,15 +51,39 @@
             </div>
             <div class="frame-count">
               FRAME <span id="frame">0000</span><span class="divider">/</span
-              ><span id="latency">— ms</span>
+              ><span id="latency">0.0 FPS</span>
             </div>
           </div>
           <div class="transport">
             <button id="pause" disabled>PAUSE</button
             ><button id="reset" disabled>↻ RESET WORLD</button>
+            <button id="fullscreen" aria-label="Toggle fullscreen">⛶</button>
+            <button id="record" disabled>RECORD 30s</button>
             <div class="spacer"></div>
             <span id="remaining">2,000 frame session limit</span>
           </div>
+          <div class="control-status" aria-label="Control feedback">
+            <span>YOU <strong id="input-local">PAUSED</strong></span>
+            <span>MODEL <strong id="input-cloud">WAITING</strong></span>
+            <span id="response">Waiting for cloud</span>
+            <span id="last-action">Last action: —</span>
+          </div>
+          <div class="play-controls" aria-label="Hold to play">
+            <div class="move-pad">
+              <button data-control="KeyW" aria-label="Move forward (W)">W ↑</button>
+              <button data-control="KeyA" aria-label="Move left (A)">A ←</button>
+              <button data-control="KeyS" aria-label="Move backward (S)">S ↓</button>
+              <button data-control="KeyD" aria-label="Move right (D)">D →</button>
+            </div>
+            <div class="action-pad">
+              <button data-control="KeyF" aria-label="Fire (F)">FIRE</button>
+              <button data-control="Space" aria-label="Jump (Space)">JUMP</button>
+              <button data-control="KeyR" aria-label="Reload (R)">RELOAD</button>
+              <button data-control="ArrowLeft" aria-label="Look left">LOOK ←</button>
+              <button data-control="ArrowRight" aria-label="Look right">LOOK →</button>
+            </div>
+          </div>
+          <div class="mouse-help"><span>Hold keys or buttons to play. Right-drag to look. Left-click / F to fire.</span><button id="capture-mouse">CAPTURE MOUSE</button></div>
           <div class="notice" role="status" id="message">
             Research model. Geometry, objects, and game rules can drift during
             long rollouts.
@@ -76,10 +101,27 @@
               <option value="4">4 steps · faster</option>
               <option value="16">16 steps · slower</option>
             </select>
-            <p class="small">
-              112 × 64 model output, enlarged for viewing. GPU compute runs only
-              when frames are requested.
+            <label for="pace">Simulation pace</label>
+            <select id="pace">
+              <option value="16">Native · 16 frames/s</option>
+              <option value="24">Fast · up to 24 frames/s</option>
+            </select>
+            <p class="small">Fast advances the model 1.5× as quickly; the scene may drift sooner.</p>
+            <label for="turn-speed">Look speed</label>
+            <select id="turn-speed">
+              <option value="4">Gentle</option>
+              <option value="10" selected>Normal</option>
+              <option value="30">Fast</option>
+            </select>
+            <label for="display-mode">Display</label>
+            <select id="display-mode">
+              <option value="smooth">Filtered</option>
+              <option value="pixelated">Pixelated</option>
+            </select>
+            <p class="small" id="resolution-copy">
+              Model output is enlarged for viewing.
             </p>
+            <p class="small" id="session-note" hidden></p>
           </div>
           <div class="panel controls">
             <p class="eyebrow">TAKE CONTROL</p>
@@ -90,14 +132,14 @@
             <div><span>Jump</span><kbd>SPACE</kbd></div>
             <div><span>Pause</span><kbd>ESC</kbd></div>
             <p class="small">
-              Click the world to focus. Mouse drag also changes your view.
+              Capture the mouse for free look, or hold the right mouse button to look without firing. Escape pauses.
             </p>
           </div>
           <div class="panel provenance">
             <span class="dot"></span>
             <div>
               <strong>Model-only rollout</strong>
-              <p>
+              <p id="seed-copy">
                 No game engine is running behind the viewer. Reset loads four
                 seed frames; subsequent frames are generated.
               </p>
@@ -112,6 +154,7 @@
         >
       </footer>
     </main>
-    <script src="/app.js"></script>
+    <script src="/client-core.js?v=0.4.1"></script>
+    <script src="/app.js?v=0.4.1"></script>
   </body>
 </html>

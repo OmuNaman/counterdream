@@ -139,11 +139,26 @@ h1 {
 .viewport:focus {
   border-color: #d9ee8b88;
 }
+.viewport:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+  border: none;
+}
+#exit-fullscreen { display: none; }
+.viewport:fullscreen #exit-fullscreen {
+  display: block;
+  position: absolute;
+  right: 20px;
+  top: 52px;
+  z-index: 3;
+  background: #10151ed9;
+}
 canvas {
   width: 100%;
   height: 100%;
   display: block;
-  image-rendering: pixelated;
+  image-rendering: auto;
   object-fit: contain;
 }
 .screen-label {
@@ -275,6 +290,16 @@ button:disabled {
 .notice.error {
   color: #f3a895;
 }
+.control-status { display:flex; flex-wrap:wrap; gap:12px 24px; padding:11px 0; border-top:1px solid var(--line); font:11px 'IBM Plex Mono',monospace; color:var(--muted); }
+.control-status strong { color:var(--accent); font-weight:500; margin-left:6px; }
+#response { margin-left:auto; }
+.play-controls { display:flex; flex-wrap:wrap; gap:12px; padding:6px 0; }
+.move-pad, .action-pad { display:flex; flex-wrap:wrap; gap:5px; }
+.play-controls button { min-height:44px; padding:10px 12px; font-size:11px; touch-action:none; user-select:none; }
+.play-controls button.pressed { background:var(--accent); border-color:var(--accent); color:#17200c; }
+.mouse-help { display:flex; align-items:center; gap:12px; padding:8px 0 14px; font-size:11px; color:var(--muted); line-height:1.7; }
+.mouse-help button { white-space:nowrap; font-size:10px; padding:9px; margin-left:auto; }
+.viewport { touch-action:none; }
 aside {
   display: flex;
   flex-direction: column;
@@ -468,4 +493,27 @@ footer {
   * {
     scroll-behavior: auto;
   }
+}
+.viewport:has(.overlay:not(.hidden)) .frame-count { display:none; }
+@media (max-width:1100px) {
+  header { height:58px; }
+  .heading { padding:18px 0; }
+  .heading .eyebrow { margin-bottom:8px; font-size:10px; }
+  .heading h1 { font-size:36px; margin-bottom:5px; }
+  .heading p:not(.eyebrow) { font-size:12px; }
+  .run { display:none; }
+  .workspace { display:block; }
+  aside { display:grid; grid-template-columns:1fr 1fr; margin-top:14px; }
+  .provenance { grid-column:1/-1; }
+  .transport { flex-wrap:wrap; gap:7px; }
+  .transport button { white-space:nowrap; }
+  .version { display:none; }
+}
+@media (max-width:500px) {
+  aside { grid-template-columns:1fr; }
+  .large-mark { display:none; }
+  .overlay h2 { font-size:25px; margin:0 0 8px; }
+  .overlay p { font-size:11px; margin-bottom:10px; }
+  #start { padding:11px; }
+  .mouse-help { flex-wrap:wrap; }
 }

@@ -1,0 +1,8 @@
+{
+  "frames": 96,
+  "frame_interval_ms_median": 62.92500009294599,
+  "delivered_fps": 15.945362610304768,
+  "first_control_response_ms": 329.23739997204393,
+  "region": "asia-south2",
+  "transport": "authenticated direct TLS websocket"
+}
